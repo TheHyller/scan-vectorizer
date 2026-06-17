@@ -1,0 +1,58 @@
+# ===========================================================================
+#  Scan Vectorizer — .gitignore
+#
+#  The external tools are NOT committed: get_tools.ps1 downloads them onto your
+#  machine (Poppler/potrace are GPL), and the staged bundle is large (~220 MB).
+#  So tools/, tools.zip and the built exe are all ignored — build locally.
+# ===========================================================================
+
+# --- Bundled external tools (downloaded by get_tools.ps1) ---
+/tools/
+/tools.zip
+.tooltmp/
+
+# --- PyInstaller / build venv / build artifacts ---
+/dist/
+/build/
+/.build-venv/
+*.spec
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# --- Installer tooling (Inno Setup, fetched by build_installer.ps1) ---
+/.innosetup/
+/.inno_dl/
+
+# --- Empty/legacy leftover ---
+/scan_vectorizer_tool/
+
+# --- App runtime log & generated outputs ---
+ScanVectorizer.log
+*_vectorized.pdf
+*_vectorized.svg
+*_vectorized.dxf
+*_vectorized.dwg
+*_vectorized_p*.svg
+*_vectorized_p*.dxf
+*_vectorized_searchable.pdf
+*_ocr_text.txt
+
+# --- Local test/scratch (not part of the project) ---
+test_scan.pdf
+exe_*/
+qtest/
+qfull/
+qt2/
+qj/
+qsz*/
+.mkbtmp/
+.icon_preview.png
+
+# --- OS / editors ---
+Thumbs.db
+ehthumbs.db
+.DS_Store
+.vscode/
+.idea/
+*.swp
