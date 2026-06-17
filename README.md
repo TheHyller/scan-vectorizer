@@ -255,27 +255,12 @@ It is a thin wrapper: it only *drives* the external programs above as separate
 child processes — it does not link them — so this code is independent of their
 licenses.
 
-The external tools are **not part of this repository**; `get_tools.ps1` downloads
-them onto your machine. Each has its own license — full list in
-[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). The key points:
-
-- **Poppler** and **potrace/mkbitmap** are **GPL**.
-- **Tesseract** (+ `tessdata_fast`) is **Apache-2.0**.
-
-Full license texts are in [`licenses/`](licenses/).
-
-**Therefore:**
-- Sharing the **source** (this repo) is fine — nothing third-party is included.
-- The built **`.exe`/installer embeds GPL tools** (Poppler, potrace). Redistributing
-  them is permitted under the GPL, and the **Releases binaries comply**: they bundle
-  *unmodified* upstream builds, ship the GPL/Apache license texts, and the
-  corresponding-source links + written offer are in
-  [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md#gpl-compliance-for-the-bundled-binaries).
-- Don't want to deal with that? **Publish source only** and let people build their
-  own with `build_exe.ps1` / `build_installer.ps1`.
-
-`.gitignore` already excludes `tools/`, `tools.zip`, `dist/`, the build venv and
-other artifacts, so a normal `git add .` will not commit any of the bundled tools.
+The external tools aren't in this repository (`get_tools.ps1` downloads them) and
+carry their own licenses: **Poppler** and **potrace/mkbitmap** are **GPL**,
+**Tesseract** (+ `tessdata_fast`) is **Apache-2.0** — full texts in
+[`licenses/`](licenses/). The binaries under **Releases** bundle *unmodified* upstream
+builds and comply (corresponding-source links + written offer in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md#gpl-compliance-for-the-bundled-binaries)).
 
 ---
 
