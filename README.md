@@ -4,6 +4,7 @@ Turn a **scanned PDF** (a flat raster image, e.g. from a wide-format / plotter
 scanner) into clean, resolution-independent vector files — **fully offline**, on
 your own machine.
 
+[![release](https://img.shields.io/github/v/release/TheHyller/scan-vectorizer?label=download)](https://github.com/TheHyller/scan-vectorizer/releases/latest)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![platform](https://img.shields.io/badge/app-Windows-0078D6)
 ![python](https://img.shields.io/badge/python-3.9%2B-3776AB)
@@ -61,7 +62,11 @@ Need a **`.dwg`**? Every CAD app opens the DXF directly — use **File → Save 
 
 ## Quick start
 
-**Just want the app?** Two options, both self-contained (no Python/Poppler/Tesseract
+**⬇️ Download:** grab the latest **installer** (`ScanVectorizer-Setup.exe`) or
+**portable** exe from the [**Releases page**](https://github.com/TheHyller/scan-vectorizer/releases/latest)
+— self-contained, nothing else to install.
+
+Or build it yourself — two options, both self-contained (no Python/Poppler/Tesseract
 needed to *run* them) — see [Build the Windows app](#build-the-windows-app):
 - **Installer** — `build_installer.bat` makes `dist\ScanVectorizer-Setup.exe`: a
   per-user installer (no admin) with **Start Menu + desktop shortcuts** and an
@@ -179,6 +184,15 @@ icon, pack `tools.zip`, and bundle everything with PyInstaller. On first run the
 unpacks its tools to `%LOCALAPPDATA%\ScanVectorizer\tools` (one-time). Refresh the
 staged tools anytime with `.\get_tools.ps1 -Force`.
 
+### Cutting a release (maintainer)
+With a clean committed tree and `gh` authenticated, one command builds both
+artifacts, tags the commit, and publishes a GitHub Release with the binaries:
+```powershell
+.\release.ps1 -Version 1.0.1
+```
+(It stamps the version into the installer, pushes tag `v1.0.1`, and uploads
+`ScanVectorizer-Setup.exe` + `ScanVectorizer.exe`.)
+
 > ⚠️ The built `.exe` embeds **GPL** tools (Poppler, potrace). You *may*
 > redistribute it, but only if you also meet the GPL's obligations (provide their
 > source + license texts). Easiest is to **publish the source only** and let people
@@ -273,6 +287,7 @@ get_tools.ps1              # downloads/stages Poppler, potrace+mkbitmap, Tessera
 build_exe.ps1 / .bat       # build the portable single-exe
 build_installer.ps1 / .bat # build the Windows installer (Setup.exe)
 installer.iss              # Inno Setup script for the installer
+release.ps1                # build + tag + publish a GitHub release
 make_icon.py               # generates scan_vectorizer.ico (build-time)
 make_testpdf.py            # makes a small synthetic Slovak test scan (dev helper)
 requirements.txt           # Python deps

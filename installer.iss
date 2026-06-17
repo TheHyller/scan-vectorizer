@@ -4,7 +4,10 @@
 ; Build it with build_installer.ps1 (which also makes the onedir app first).
 
 #define MyAppName "Scan Vectorizer"
-#define MyAppVersion "1.0.0"
+; version can be overridden from the build script:  iscc /DMyAppVersion=1.0.1 installer.iss
+#ifndef MyAppVersion
+  #define MyAppVersion "1.0.0"
+#endif
 #define MyAppPublisher "Branislav Hyll"
 #define MyAppExeName "ScanVectorizer.exe"
 

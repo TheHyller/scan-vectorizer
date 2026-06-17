@@ -6,7 +6,9 @@
 # Inno Setup. Run once:   .\build_installer.ps1   (or double-click build_installer.bat)
 #
 # Needs Python 3.9+. The free Inno Setup compiler is fetched automatically if
-# it isn't already installed.
+# it isn't already installed. Optionally stamp a version:  .\build_installer.ps1 -Version 1.0.1
+
+param([string]$Version)
 
 $ErrorActionPreference = "Stop"
 Set-Location -Path $PSScriptRoot
@@ -63,9 +65,12 @@ if (-not $iscc) {
 }
 if (-not $iscc) { throw "Could not obtain the Inno Setup compiler (ISCC.exe). Install Inno Setup, then re-run." }
 
-# 5. compile the installer
+# 5. compile the installer (stamp the version if one was given)
 Write-Host "Compiling installer with $iscc ..."
-& $iscc "installer.iss"
+$isccArgs = @()
+if ($Version) { $isccArgs += "/DMyAppVersion=$Version" }
+$isccArgs += "installer.iss"
+& $iscc @isccArgs
 
 Write-Host ""
 Write-Host "Done -> $(Join-Path $PSScriptRoot 'dist\ScanVectorizer-Setup.exe')"
