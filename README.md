@@ -16,19 +16,12 @@ your own machine.
 | **DXF** | open in AutoCAD / any CAD; simplified, scaled to **millimetres** (save as `.dwg` from your CAD if you need DWG) |
 | **searchable PDF + `.txt`** *(optional, OCR)* | search/select the text; any Tesseract language (Slovak `slk` included); optional 90° pass for **vertical labels** |
 
-> **Scan Vectorizer is a wrapper, not a new engine.** The hard parts are done by
-> mature open-source tools — **[Poppler](https://poppler.freedesktop.org)**
-> (PDF → image), **[potrace](https://potrace.sourceforge.net)** + **mkbitmap** (the
-> raster → vector tracing, by Peter Selinger), and
-> **[Tesseract](https://github.com/tesseract-ocr/tesseract)** (OCR). This project's
-> own code is just the **glue** around them: a GUI/CLI, grain de-noising,
-> millimetre-scaled and bold-lined DXF, a 90° vertical-label OCR pass, a
-> searchable-PDF text layer, and a single-file Windows build. Full credit for the
-> heavy lifting goes to those projects — see [Credits](#credits).
-
-> **Heads-up for publishing:** this repo is **source only**. The external tools it
-> drives are downloaded by `get_tools.ps1` and are **not** committed (they're big
-> and GPL-licensed). See [Licensing](#licensing) before sharing any built `.exe`.
+> **Scan Vectorizer is a wrapper, not a new engine.** The heavy lifting is done by
+> **[Poppler](https://poppler.freedesktop.org)** (PDF → image),
+> **[potrace](https://potrace.sourceforge.net)** + **mkbitmap** (tracing, by Peter
+> Selinger), and **[Tesseract](https://github.com/tesseract-ocr/tesseract)** (OCR).
+> This project is the glue: a GUI/CLI, de-noising, mm-scaled bold-lined DXF, a
+> vertical-label OCR pass, and a one-file Windows build. See [Credits](#credits).
 
 ---
 
@@ -66,13 +59,8 @@ Need a **`.dwg`**? Every CAD app opens the DXF directly — use **File → Save 
 **portable** exe from the [**Releases page**](https://github.com/TheHyller/scan-vectorizer/releases/latest)
 — self-contained, nothing else to install.
 
-Or build it yourself — two options, both self-contained (no Python/Poppler/Tesseract
-needed to *run* them) — see [Build the Windows app](#build-the-windows-app):
-- **Installer** — `build_installer.bat` makes `dist\ScanVectorizer-Setup.exe`: a
-  per-user installer (no admin) with **Start Menu + desktop shortcuts** and an
-  uninstaller. Launches instantly.
-- **Portable** — `build_exe.bat` makes a single `dist\ScanVectorizer.exe` you can
-  copy anywhere and double-click.
+Or **build it yourself** — an installer or a portable exe (both self-contained); see
+[Build the Windows app](#build-the-windows-app).
 
 **From source:**
 
@@ -193,10 +181,8 @@ artifacts, tags the commit, and publishes a GitHub Release with the binaries:
 (It stamps the version into the installer, pushes tag `v1.0.1`, and uploads
 `ScanVectorizer-Setup.exe` + `ScanVectorizer.exe`.)
 
-> ⚠️ The built `.exe` embeds **GPL** tools (Poppler, potrace). You *may*
-> redistribute it, but only if you also meet the GPL's obligations (provide their
-> source + license texts). Easiest is to **publish the source only** and let people
-> build their own. See [Licensing](#licensing).
+> ⚠️ The built `.exe` bundles **GPL** tools (Poppler, potrace) — see
+> [Licensing](#licensing) before redistributing it.
 
 ---
 
@@ -223,11 +209,8 @@ artifacts, tags the commit, and publishes a GitHub Release with the binaries:
 - **Faint lines dropping out / gaps** → lower `--threshold` (e.g. `0.45`); for
   blotchy backgrounds try `--filter 20`.
 - **Jagged lines / huge DXF** → both come from tracing **scan grain**. Raise
-  `--denoise` (e.g. `1.5`), drop `--dpi` to `250`–`300` (don't use 500), and raise
-  `--simplify` (e.g. `1.5`) + `--turd` (e.g. `6`). On the sample sheet,
-  `--denoise 1.2 --dpi 250 --simplify 1.5 --turd 6` cut the DXF from **11.6 MB to
-  5.3 MB** and removed the jagged edges. (In the window: raise **Denoise** and
-  **Despeckle**, lower **Trace DPI**.)
+  **Denoise** (`--denoise 1.5`), use **250–300 dpi** (not 500), and raise
+  `--simplify`/`--turd`. (That roughly halved the sample sheet's DXF, 11.6 → 5.3 MB.)
 - **No Slovak characters in OCR** → ensure `slk.traineddata` is present, pass
   `--lang slk+eng`.
 - **Vertical labels missed** → add `--vertical` (or tick it in the window).
