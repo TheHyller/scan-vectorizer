@@ -105,16 +105,18 @@ python scan_vectorizer.py
 Pick a PDF, tick the formats, choose an output folder, click **Convert**. The
 window has:
 - format checkboxes — **PDF / SVG / DXF / OCR**;
-- a **Line quality** row — **Denoise**, Despeckle, Smoothing, Threshold,
-  **CAD line width**, Upscale 2×, Bridge small gaps;
+- a **Line quality** panel — a **Detail level** preset (Detail / Balanced /
+  Compact) plus fine controls (Denoise, Despeckle, Smoothing, Threshold, CAD line
+  width, Upscale 2×, Bridge small gaps);
 - an **OCR language** selector (default `slk+eng`; installed languages listed);
 - **Also catch vertical labels (90° OCR pass)**;
 - **Check tools & languages** — confirms the tools and `eng`/`slk` are present.
 
 ### Command line
 ```bash
-python scan_vectorizer.py myscan.pdf                       # PDF + SVG + DXF
-python scan_vectorizer.py myscan.pdf -f dxf -o ./out       # just DXF, into ./out
+python scan_vectorizer.py myscan.pdf                       # PDF + SVG + DXF (balanced)
+python scan_vectorizer.py myscan.pdf --preset detail       # keep thin/faint lines
+python scan_vectorizer.py myscan.pdf --preset compact      # smallest files
 python scan_vectorizer.py myscan.pdf --ocr --lang slk+eng  # + searchable PDF & text
 python scan_vectorizer.py myscan.pdf --vertical            # + 90° pass for vertical labels
 ```
@@ -126,17 +128,18 @@ python scan_vectorizer.py myscan.pdf --vertical            # + 90° pass for ver
 | `--ocr` | off | also write `_searchable.pdf` and `_ocr_text.txt` |
 | `--vertical` | off | extra 90° OCR pass for vertical labels (implies `--ocr`); alias `--ocr-rotated` |
 | `--lang` | `slk+eng` | OCR language(s); e.g. `eng`, `ces`, `deu+eng` |
-| `--dpi` | `300` | trace resolution (higher = finer + bigger files) |
-| `--ocr-dpi` | `400` | OCR render resolution (small text reads better higher) |
-| `--denoise` | `1.0` | blur (px) to wash out scan grain before tracing → **smoother lines + smaller files**; `0` = off, `1.5`–`2` for grainy scans |
-| `--threshold` | `0.5` | black/white cut 0..1 (raise to keep more of faint lines) |
-| `--smooth` | `1.2` | corner smoothing 0..1.3 (lower = sharper corners) |
-| `--line-width` | `0.3` | **DXF line width in mm** so CAD shows bold (not hairline) lines; `0` = hairline |
+| `--preset` | `balanced` | **detail** (keeps thin/faint lines, bigger files), **balanced**, or **compact** (smallest). Sets the knobs below — override any individually. |
+| `--dpi` | *preset* | trace resolution (detail 500 / balanced 350 / compact 250) |
+| `--denoise` | *preset* | blur (px) to remove scan grain; **`0` keeps thin lines**, `1.5`–`2` for grainy scans |
+| `--threshold` | *preset* | black/white cut 0..1 (lower keeps more faint detail) |
+| `--smooth` | *preset* | corner smoothing 0..1.3 (lower = sharper corners) |
+| `--line-width` | *preset* | **DXF line width in mm** (bold in CAD); `0` = hairline |
+| `--simplify` | *preset* | DXF point-thinning tolerance in px (higher = smaller DXF) |
+| `--turd` | *preset* | despeckle: drop specks up to this many px |
 | `--filter` | `0` | high-pass for **uneven/blotchy** scans; `0` = off; try `20`+ (can hollow thick strokes) |
 | `--upscale` | `1` | upscale before tracing — smoother edges, slower, bigger files |
 | `--connect` | off | bridge small gaps in broken lines (morphological close) |
-| `--simplify` | `0.6` | DXF point-thinning tolerance in px (higher = smaller DXF) |
-| `--turd` | `2` | despeckle: drop specks up to this many px |
+| `--ocr-dpi` | `400` | OCR render resolution (small text reads better higher) |
 | `--psm` | `11` | Tesseract layout mode (`11` = sparse, good for drawings) |
 | `--check` | – | check that all tools/languages are present and exit |
 
@@ -205,6 +208,9 @@ artifacts, tags the commit, and publishes a GitHub Release with the binaries:
 
 - **"Missing dependencies"** → `python scan_vectorizer.py --check`; install/stage
   whatever shows `MISS` (`get_tools.ps1` on Windows).
+- **Thin/faint lines or fine detail dropping out** → use **`--preset detail`** (or
+  the **Detail** level in the window). It turns off de-noising, raises dpi, and lowers
+  the threshold so faint thin strokes survive — at the cost of bigger files.
 - **Lines too faint in CAD** → raise `--line-width` (e.g. `0.4`); `0` = hairlines.
 - **Faint lines dropping out / gaps** → lower `--threshold` (e.g. `0.45`); for
   blotchy backgrounds try `--filter 20`.

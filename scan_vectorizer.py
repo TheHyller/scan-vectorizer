@@ -83,6 +83,15 @@ OCR_TOOLS = {
 }
 PY_LIBS = ("ezdxf", "pypdf", "numpy")
 
+# Quality presets -- the capture-vs-size/smoothness trade-off in one knob.
+# "detail" keeps thin faint lines (no de-noising, high dpi, low threshold, hairlines);
+# "compact" favours small files (de-noise + lower dpi + aggressive thinning).
+PRESETS = {
+    "detail":   {"dpi": 500, "denoise": 0.0, "threshold": 0.45, "alphamax": 1.0, "simplify": 0.3, "turd": 1, "line_width": 0.0},
+    "balanced": {"dpi": 350, "denoise": 0.4, "threshold": 0.50, "alphamax": 1.2, "simplify": 0.6, "turd": 2, "line_width": 0.2},
+    "compact":  {"dpi": 250, "denoise": 1.2, "threshold": 0.50, "alphamax": 1.2, "simplify": 1.5, "turd": 6, "line_width": 0.3},
+}
+
 
 # Hide the console windows that bundled child tools would otherwise flash when
 # this runs as a --windowed PyInstaller exe.
@@ -495,7 +504,7 @@ def build_searchable_page(vector_pdf_path, up_text_pdf, rot_text_pdf=None):
 def process_pdf(pdf, outdir, formats, do_ocr=False, ocr_rotated=False, dpi=300, ocr_dpi=400,
                 lang="slk+eng", psm=11, eps_px=0.6, turd=2,
                 threshold=0.5, filt=0, upscale=1, alphamax=1.2, opttol=0.2, connect=False,
-                denoise=1.0, line_width=0.3, log=print):
+                denoise=0.4, line_width=0.2, log=print):
     from pypdf import PdfReader, PdfWriter
     pdf = str(pdf)
     outdir = Path(outdir)
@@ -652,28 +661,45 @@ def launch_gui():
     ttk.Checkbutton(frm_opt, text="Also catch vertical labels (90 deg OCR pass)",
                     variable=vert_v).grid(row=2, column=2, columnspan=3, sticky="w", **pad)
 
-    # ---- line quality (mkbitmap + potrace) ----
-    frm_q = ttk.LabelFrame(root, text="2b. Line quality (cleaner tracing)")
+    # ---- line quality (preset + fine controls) ----
+    frm_q = ttk.LabelFrame(root, text="2b. Line quality")
     frm_q.pack(fill="x", **pad)
     thr_v = tk.DoubleVar(value=0.5)
     smooth_v = tk.DoubleVar(value=1.2)
     turd_v = tk.IntVar(value=2)
-    denoise_v = tk.DoubleVar(value=1.0)
-    lw_v = tk.DoubleVar(value=0.3)
+    denoise_v = tk.DoubleVar(value=0.4)
+    lw_v = tk.DoubleVar(value=0.2)
+    simplify_v = tk.DoubleVar(value=0.6)
     upscale_v = tk.BooleanVar(value=False)
     connect_v = tk.BooleanVar(value=False)
-    ttk.Label(frm_q, text="Denoise:").grid(row=0, column=0, sticky="e", **pad)
-    ttk.Spinbox(frm_q, from_=0.0, to=4.0, increment=0.25, width=6, textvariable=denoise_v).grid(row=0, column=1, sticky="w", **pad)
-    ttk.Label(frm_q, text="Despeckle:").grid(row=0, column=2, sticky="e", **pad)
-    ttk.Spinbox(frm_q, from_=0, to=20, increment=1, width=6, textvariable=turd_v).grid(row=0, column=3, sticky="w", **pad)
-    ttk.Label(frm_q, text="Smoothing:").grid(row=0, column=4, sticky="e", **pad)
-    ttk.Spinbox(frm_q, from_=0.0, to=1.3, increment=0.1, width=6, textvariable=smooth_v).grid(row=0, column=5, sticky="w", **pad)
-    ttk.Label(frm_q, text="Threshold:").grid(row=1, column=0, sticky="e", **pad)
-    ttk.Spinbox(frm_q, from_=0.1, to=0.9, increment=0.05, width=6, textvariable=thr_v).grid(row=1, column=1, sticky="w", **pad)
-    ttk.Label(frm_q, text="CAD line width (mm):").grid(row=1, column=2, columnspan=2, sticky="e", **pad)
-    ttk.Spinbox(frm_q, from_=0.0, to=2.0, increment=0.05, width=6, textvariable=lw_v).grid(row=1, column=4, sticky="w", **pad)
-    ttk.Checkbutton(frm_q, text="Upscale 2x (smoother, slower)", variable=upscale_v).grid(row=2, column=0, columnspan=3, sticky="w", **pad)
-    ttk.Checkbutton(frm_q, text="Bridge small gaps", variable=connect_v).grid(row=2, column=3, columnspan=3, sticky="w", **pad)
+    preset_v = tk.StringVar(value="Balanced")
+    _PRESET_MAP = {"Detail (max)": "detail", "Balanced": "balanced", "Compact (small)": "compact"}
+
+    def apply_preset(*_):
+        p = PRESETS[_PRESET_MAP.get(preset_v.get(), "balanced")]
+        dpi_v.set(p["dpi"]); denoise_v.set(p["denoise"]); thr_v.set(p["threshold"])
+        smooth_v.set(p["alphamax"]); turd_v.set(p["turd"]); lw_v.set(p["line_width"])
+        simplify_v.set(p["simplify"])
+
+    ttk.Label(frm_q, text="Detail level:").grid(row=0, column=0, sticky="e", **pad)
+    cb_preset = ttk.Combobox(frm_q, textvariable=preset_v, values=list(_PRESET_MAP), state="readonly", width=14)
+    cb_preset.grid(row=0, column=1, columnspan=2, sticky="w", **pad)
+    cb_preset.bind("<<ComboboxSelected>>", apply_preset)
+    ttk.Label(frm_q, text="Detail = keep thin/faint lines (bigger files)").grid(row=0, column=3, columnspan=3, sticky="w", **pad)
+
+    ttk.Label(frm_q, text="Denoise:").grid(row=1, column=0, sticky="e", **pad)
+    ttk.Spinbox(frm_q, from_=0.0, to=4.0, increment=0.25, width=6, textvariable=denoise_v).grid(row=1, column=1, sticky="w", **pad)
+    ttk.Label(frm_q, text="Despeckle:").grid(row=1, column=2, sticky="e", **pad)
+    ttk.Spinbox(frm_q, from_=0, to=20, increment=1, width=6, textvariable=turd_v).grid(row=1, column=3, sticky="w", **pad)
+    ttk.Label(frm_q, text="Smoothing:").grid(row=1, column=4, sticky="e", **pad)
+    ttk.Spinbox(frm_q, from_=0.0, to=1.3, increment=0.1, width=6, textvariable=smooth_v).grid(row=1, column=5, sticky="w", **pad)
+    ttk.Label(frm_q, text="Threshold:").grid(row=2, column=0, sticky="e", **pad)
+    ttk.Spinbox(frm_q, from_=0.1, to=0.9, increment=0.05, width=6, textvariable=thr_v).grid(row=2, column=1, sticky="w", **pad)
+    ttk.Label(frm_q, text="CAD line width (mm):").grid(row=2, column=2, columnspan=2, sticky="e", **pad)
+    ttk.Spinbox(frm_q, from_=0.0, to=2.0, increment=0.05, width=6, textvariable=lw_v).grid(row=2, column=4, sticky="w", **pad)
+    ttk.Checkbutton(frm_q, text="Upscale 2x (smoother, slower)", variable=upscale_v).grid(row=3, column=0, columnspan=3, sticky="w", **pad)
+    ttk.Checkbutton(frm_q, text="Bridge small gaps", variable=connect_v).grid(row=3, column=3, columnspan=3, sticky="w", **pad)
+    apply_preset()   # seed the controls from the default (Balanced) preset
 
     # ---- output folder ----
     frm_out = ttk.LabelFrame(root, text="3. Output folder")
@@ -722,7 +748,8 @@ def launch_gui():
                                    dpi=dpi_v.get(), ocr_dpi=ocrdpi_v.get(),
                                    lang=lang_v.get().strip() or "eng",
                                    threshold=thr_v.get(), alphamax=smooth_v.get(),
-                                   turd=turd_v.get(), upscale=(2 if upscale_v.get() else 1),
+                                   turd=turd_v.get(), eps_px=simplify_v.get(),
+                                   upscale=(2 if upscale_v.get() else 1),
                                    connect=connect_v.get(), denoise=denoise_v.get(),
                                    line_width=lw_v.get(), log=ui_log)
             ui_log("\nDONE. Created:")
@@ -789,33 +816,41 @@ def main():
     ap.add_argument("--vertical", "--ocr-rotated", dest="vertical", action="store_true",
                     help="extra 90-degree OCR pass to also catch vertical labels (implies --ocr)")
     ap.add_argument("--lang", default="slk+eng", help="OCR language(s) (default: slk+eng)")
-    ap.add_argument("--dpi", type=int, default=300, help="trace resolution (default: 300)")
     ap.add_argument("--ocr-dpi", type=int, default=400, help="OCR render resolution (default: 400)")
     ap.add_argument("--psm", type=int, default=11, help="Tesseract page-seg mode (default: 11 = sparse)")
-    ap.add_argument("--simplify", type=float, default=0.6,
-                    help="DXF simplify tolerance in pixels (default: 0.6)")
-    ap.add_argument("--turd", type=int, default=2, help="despeckle size (default: 2)")
-    # --- trace quality (mkbitmap + potrace) ---
-    ap.add_argument("--threshold", type=float, default=0.5,
-                    help="black/white threshold 0..1 (default: 0.5; lower keeps more)")
-    ap.add_argument("--denoise", type=float, default=1.0,
-                    help="blur radius (px) to remove scan grain before tracing -> smoother "
-                         "lines + smaller files; 0 = off, 1.5-2 for grainy scans (default: 1.0)")
+    # --- trace quality ---
+    ap.add_argument("--preset", choices=list(PRESETS), default="balanced",
+                    help="quality preset: detail (keeps thin/faint lines, bigger files), "
+                         "balanced (default), or compact (smallest)")
+    # these override the preset when given (default = whatever the preset sets)
+    ap.add_argument("--dpi", type=int, help="trace resolution (preset default; detail=500)")
+    ap.add_argument("--denoise", type=float,
+                    help="blur radius (px) to remove scan grain; 0 = off (keeps thin lines), "
+                         "1.5-2 for grainy scans (preset default)")
+    ap.add_argument("--threshold", type=float,
+                    help="black/white threshold 0..1 (lower keeps more faint detail)")
+    ap.add_argument("--smooth", dest="alphamax", type=float,
+                    help="corner smoothing 0..1.3 (lower = sharper)")
+    ap.add_argument("--simplify", type=float, help="DXF point-thinning tolerance in px (higher = smaller)")
+    ap.add_argument("--turd", type=int, help="despeckle size (drop specks up to N px)")
+    ap.add_argument("--line-width", dest="line_width", type=float,
+                    help="DXF line width in mm (bold in CAD); 0 = hairline")
     ap.add_argument("--filter", dest="filt", type=int, default=0,
                     help="mkbitmap high-pass strength for UNEVEN scans; 0 = off "
                          "(default: 0; try 20+ for blotchy backgrounds)")
-    ap.add_argument("--smooth", dest="alphamax", type=float, default=1.2,
-                    help="corner smoothing 0..1.3 (default: 1.2; lower = sharper)")
     ap.add_argument("--upscale", type=int, default=1,
                     help="mkbitmap upscale factor for smoother edges (default: 1)")
     ap.add_argument("--connect", action="store_true",
                     help="bridge small gaps in lines (morphological close; needs Pillow)")
-    ap.add_argument("--line-width", dest="line_width", type=float, default=0.3,
-                    help="DXF line width in mm so CAD shows bold (not hairline) lines; "
-                         "0 = hairline (default: 0.3)")
     ap.add_argument("--gui", action="store_true", help="force the GUI")
     ap.add_argument("--check", action="store_true", help="check dependencies and exit")
     args = ap.parse_args()
+
+    # fill any preset-controlled flag the user didn't set from the chosen preset
+    _p = PRESETS[args.preset]
+    for _k in ("dpi", "denoise", "threshold", "alphamax", "simplify", "turd", "line_width"):
+        if getattr(args, _k) is None:
+            setattr(args, _k, _p[_k])
 
     if args.check:
         print("Dependency check:")
