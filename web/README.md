@@ -32,3 +32,8 @@ Poskladá `src/page.html` + `src/core.js` + `src/exports.js` do jedného `index.
 - `src/core.js`: čistenie bitmapy, stenčovanie (Zhang-Suen), skladanie polyčiar, sledovanie obrysov
 - `src/exports.js`: zápis SVG, DXF, PDF a ZIP
 - `src/page.html`: rozhranie
+
+
+## Nasadenie
+
+Cloudflare Workers (statické assets z priečinka `web/`, vetva `web-app`).
