@@ -1,0 +1,517 @@
+<title>Vektorizér výkresov</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+/* Layout: a drafting desk. Narrow control rail on the left, the sheet fills the rest. */
+:root {
+  --bg: #E9EDF1; --panel: #F7F9FB; --line: #C9D1D9; --fg: #14202B; --muted: #566575;
+  --accent: #0A63C2; --accent-fg: #FFFFFF; --trace: #C81E8A; --desk: #D3DAE1; --warn: #9A5B00;
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --cond: "IBM Plex Sans Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E141A; --panel: #161E26; --line: #2B3743; --fg: #E4EBF1; --muted: #93A2B2;
+    --accent: #58A6FF; --accent-fg: #06121F; --trace: #FF62C6; --desk: #090D11; --warn: #F0B45A; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E141A; --panel: #161E26; --line: #2B3743; --fg: #E4EBF1; --muted: #93A2B2;
+  --accent: #58A6FF; --accent-fg: #06121F; --trace: #FF62C6; --desk: #090D11; --warn: #F0B45A; color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.45 var(--sans); }
+* { box-sizing: border-box; }
+.app { height: 100%; display: grid; grid-template-columns: 330px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-bottom: 1px solid var(--line); }
+h1 { margin: 0; font: 600 20px/1.2 var(--cond); letter-spacing: .02em; text-transform: uppercase; }
+header p { margin: 0; color: var(--muted); font-size: 13px; }
+aside { overflow-y: auto; padding-block: 14px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px;
+  border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; gap: 16px; }
+fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+legend { padding: 0; margin-bottom: 7px; font: 600 12px/1 var(--cond); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+label { display: block; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.row > span:first-child { min-width: 0; }
+.val { font: 500 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0 0; }
+select, input[type=number] { font: 500 13px var(--mono); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 7px; }
+input[type=number] { width: 84px; }
+.check { display: flex; gap: 8px; align-items: flex-start; }
+.check input { margin-top: 3px; accent-color: var(--accent); }
+.hint { color: var(--muted); font-size: 12px; margin: 0; }
+button { font: 500 13px var(--sans); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 7px 11px; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.drop { border: 1.5px dashed var(--line); border-radius: 6px; padding: 12px; text-align: center; background: var(--bg); }
+.drop.over { border-color: var(--accent); }
+.drop button { width: 100%; }
+.drop .name { margin-top: 8px; font: 12px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; background: var(--bg); padding: 7px 6px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed=true] { background: var(--fg); color: var(--bg); }
+.dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.dl button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 4px; }
+.dl b { font: 600 15px var(--cond); letter-spacing: .05em; }
+.dl small { font: 11px var(--mono); opacity: .85; }
+dl.stats { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 12px; }
+dl.stats dt { color: var(--muted); }
+dl.stats dd { margin: 0; font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+main { position: relative; min-width: 0; min-height: 0; background: var(--desk); overflow: hidden; }
+canvas#view { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; display: block; }
+canvas#view.drag { cursor: grabbing; }
+.bar { position: absolute; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.bar.top { top: 10px; left: 10px; right: max(10px, env(safe-area-inset-right, 0px)); justify-content: space-between; pointer-events: none; }
+.bar.top > * { pointer-events: auto; }
+.bar .seg, .zoom { background: var(--panel); box-shadow: 0 1px 4px rgb(0 0 0 / .18); }
+.zoom { display: flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.zoom button { border: 0; border-radius: 0; background: var(--panel); min-width: 36px; }
+.zoom button + button { border-left: 1px solid var(--line); }
+.scale { position: absolute; left: 12px; bottom: 12px; padding: 5px 8px 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; font: 500 11px var(--mono); }
+.scale i { display: block; height: 5px; margin-top: 3px; border: 1.5px solid var(--fg); border-top: 0; }
+.tag { position: absolute; right: 12px; bottom: 12px; padding: 5px 9px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; font-size: 12px; color: var(--muted); max-width: 60%; }
+.busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 12px 18px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; font-weight: 500; box-shadow: 0 4px 18px rgb(0 0 0 / .25); display: flex; gap: 10px; align-items: center; max-width: 80%; }
+.busy::before { content: ""; width: 14px; height: 14px; flex: none; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .busy::before { animation: none; } }
+.note { color: var(--warn); font-size: 12px; margin: 0; }
+@media (max-width: 760px) {
+  html, body { height: auto; }
+  .app { display: flex; flex-direction: column; height: auto; }
+  main { order: 1; }
+  aside { order: 2; }
+  aside { border-right: 0; border-top: 1px solid var(--line); padding-right: max(16px, env(safe-area-inset-right, 0px)); overflow: visible; }
+  main { height: min(68svh, 560px); }
+}
+</style>
+
+<div class="app">
+  <header>
+    <h1>Vektorizér výkresov</h1>
+    <p>Sken v PDF → vektorové PDF, SVG a DXF. Všetko sa počíta v tvojom prehliadači, súbor nikam neodchádza.</p>
+  </header>
+
+  <aside>
+    <fieldset>
+      <legend>Vstup</legend>
+      <div class="drop" id="drop">
+        <button class="primary" id="pick" type="button">Vybrať PDF alebo obrázok</button>
+        <input type="file" id="file" accept=".pdf,application/pdf,image/png,image/jpeg,image/webp,image/bmp" hidden>
+        <div class="name" id="fname">Ukážkový výkres. Vlož sem vlastný sken.</div>
+      </div>
+      <label class="row" id="pageRow" hidden><span>Strana</span><select id="page"></select></label>
+      <label class="row"><span>Rozlíšenie spracovania</span>
+        <select id="dpi"><option>150</option><option>200</option><option selected>300</option><option>400</option></select></label>
+      <p class="note" id="dpiNote" hidden></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Spôsob vektorizácie</legend>
+      <div class="seg" role="group" aria-label="Spôsob vektorizácie">
+        <button type="button" data-mode="center" aria-pressed="true">Osové čiary</button>
+        <button type="button" data-mode="outline" aria-pressed="false">Obrys</button>
+      </div>
+      <p class="hint" id="modeHint"></p>
+      <label class="check" id="fillsRow"><input type="checkbox" id="keepFills" checked><span>Plné plochy (šípky, hrubé písmo) nechať ako obrys</span></label>
+      <label class="check" id="pruneRow"><input type="checkbox" id="prune" checked><span>Odstrániť krátke výbežky na čiarach</span></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Čistenie</legend>
+      <label><span class="row"><span>Prah čiernej</span><span class="val" id="thrVal">auto</span></span>
+        <input type="range" id="thr" min="0" max="250" step="5" value="0" aria-describedby="thrHelp"></label>
+      <p class="hint" id="thrHelp">Úplne vľavo = automaticky. Vyššia hodnota zachytí aj bledé čiary.</p>
+      <label><span class="row"><span>Odstrániť škvrny do</span><span class="val" id="turdVal">6 px</span></span>
+        <input type="range" id="turd" min="0" max="40" step="1" value="6"></label>
+      <label><span class="row"><span>Zjednodušenie čiar</span><span class="val" id="epsVal">1,0 px</span></span>
+        <input type="range" id="eps" min="0.4" max="3" step="0.1" value="1"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Stiahnuť</legend>
+      <label class="row"><span>Mierka výkresu pre DXF&nbsp; 1 :</span><input type="number" id="scale" min="1" max="5000" step="1" value="1"></label>
+      <p class="hint" id="scaleHint"></p>
+      <div class="dl">
+        <button type="button" data-fmt="pdf" disabled><b>PDF</b><small id="szPdf">–</small></button>
+        <button type="button" data-fmt="svg" disabled><b>SVG</b><small id="szSvg">–</small></button>
+        <button type="button" data-fmt="dxf" disabled><b>DXF</b><small id="szDxf">–</small></button>
+      </div>
+      <p class="hint" id="msg" role="status" aria-live="polite"></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Výsledok</legend>
+      <dl class="stats" id="stats"></dl>
+    </fieldset>
+  </aside>
+
+  <main id="stage">
+    <canvas id="view" aria-label="Náhľad výkresu"></canvas>
+    <div class="bar top">
+      <div class="seg" role="group" aria-label="Zobrazenie">
+        <button type="button" data-view="scan" aria-pressed="false">Sken</button>
+        <button type="button" data-view="over" aria-pressed="true">Prekrytie</button>
+        <button type="button" data-view="vec" aria-pressed="false">Vektor</button>
+      </div>
+      <div class="zoom">
+        <button type="button" id="zOut" aria-label="Oddialiť">−</button>
+        <button type="button" id="zFit">Celý</button>
+        <button type="button" id="zIn" aria-label="Priblížiť">+</button>
+      </div>
+    </div>
+    <div class="scale" id="scaleBar"><span id="scaleTxt">10 mm</span><i id="scaleLine"></i></div>
+    <div class="tag" id="tag"></div>
+    <div class="busy" id="busy" hidden><span id="busyTxt">Pracujem…</span></div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script>
+/*CORE*/
+/*EXPORT*/
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const fmtN = n => Math.round(n).toLocaleString('sk-SK');
+  const fmtD = (n, d) => n.toLocaleString('sk-SK', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const mobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+  const MAX_AREA = mobile ? 16e6 : 100e6, MAX_SIDE = mobile ? 4096 : 16000;
+  const inArtifact = !!(window.claude && window.claude.use);
+  const dlReady = inArtifact ? window.claude.use('downloads').catch(() => null) : null;
+
+  const S = { src: null, dpi: 150, hist: null, name: 'ukazka', pdf: null, isSample: true, res: null, paths: null,
+    mode: 'center', view: 'over', k: 1, ox: 0, oy: 0, run: 0, blobs: {} };
+
+  // ---------- worker (falls back to the main thread) ----------
+  const core = VecCore();
+  let worker = null;
+  const pending = new Map();
+  try {
+    const src = VecCore.toString() + ';var C=VecCore();onmessage=function(e){var m=e.data;try{var r=C.vectorize(new Uint8Array(m.bm),m.W,m.H,m.opts,' +
+      'function(t){postMessage({id:m.id,t:t})});postMessage({id:m.id,r:r},[r.fillsData.buffer,r.fillsOff.buffer,r.linesData.buffer,r.linesOff.buffer,r.linesClosed.buffer]);}' +
+      'catch(err){postMessage({id:m.id,err:String(err)})}}';
+    worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    worker.onmessage = e => {
+      const m = e.data, p = pending.get(m.id);
+      if (!p) return;
+      if (m.t) { p.say(m.t); return; }
+      pending.delete(m.id);
+      if (m.err) p.reject(new Error(m.err)); else p.resolve(m.r);
+    };
+    worker.onerror = () => { worker = null; for (const p of pending.values()) p.retry(); pending.clear(); };
+  } catch (e) { worker = null; }
+
+  function vectorize(bm, W, H, opts, say) {
+    const local = () => new Promise((res, rej) => setTimeout(() => { try { res(core.vectorize(bm, W, H, opts)); } catch (e) { rej(e); } }, 30));
+    if (!worker) return local();
+    return new Promise((resolve, reject) => {
+      const id = ++vectorize.n, copy = bm.slice(0);
+      pending.set(id, { resolve, reject, say, retry: () => local().then(resolve, reject) });
+      worker.postMessage({ id, bm: copy.buffer, W, H, opts }, [copy.buffer]);
+    });
+  }
+  vectorize.n = 0;
+
+  // ---------- status ----------
+  const busy = t => { $('busyTxt').textContent = t; $('busy').hidden = false; };
+  const idle = () => { $('busy').hidden = true; };
+  const msg = t => { $('msg').textContent = t || ''; };
+  const tick = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+
+  // ---------- input ----------
+  function sampleCanvas() {
+    const c = document.createElement('canvas'); c.width = 3000; c.height = 1920;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.scale(2, 2);
+    g.strokeStyle = g.fillStyle = '#000'; g.lineWidth = 3; g.lineCap = 'butt';
+    const L = (...p) => { g.beginPath(); g.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) g.lineTo(p[i], p[i + 1]); g.stroke(); };
+    g.strokeRect(40, 40, 1420, 880);
+    L(140, 300, 1180, 300); L(140, 420, 1180, 420);            // prívod, spiatočka
+    L(140, 300, 140, 640); L(140, 640, 520, 640); L(1180, 300, 1180, 420);
+    g.setLineDash([26, 10, 4, 10]); L(100, 360, 1260, 360); g.setLineDash([]);
+    g.beginPath(); g.arc(420, 300, 34, 0, 6.2832); g.fillStyle = '#fff'; g.fill(); g.stroke();   // čerpadlo
+    g.fillStyle = '#000'; g.beginPath(); g.moveTo(400, 276); g.lineTo(448, 300); g.lineTo(400, 324); g.closePath(); g.fill();
+    const valve = (x, y) => { g.fillStyle = '#fff'; g.fillRect(x - 24, y - 16, 48, 32); g.fillStyle = '#000';
+      L(x - 24, y - 16, x - 24, y + 16, x + 24, y - 16, x + 24, y + 16, x - 24, y - 16); L(x, y, x, y - 30); L(x - 14, y - 30, x + 14, y - 30); };
+    valve(640, 300); valve(860, 420);
+    g.beginPath(); g.ellipse(520, 720, 60, 80, 0, 0, 6.2832); g.stroke(); L(520, 640, 520, 644);   // expanzná nádoba
+    g.beginPath(); g.moveTo(1010, 420); g.lineTo(990, 412); g.lineTo(990, 428); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(760, 300); g.lineTo(740, 292); g.lineTo(740, 308); g.closePath(); g.fill();
+    L(600, 720, 700, 660, 820, 660);
+    g.lineWidth = 1.6; L(140, 520, 1180, 520); L(140, 505, 140, 535); L(1180, 505, 1180, 535); L(130, 530, 150, 510); L(1170, 530, 1190, 510);
+    g.font = '30px "Courier New", monospace'; g.fillText('5200', 620, 508);
+    g.fillText('EXP1', 712, 650); g.fillText('DN32', 900, 288); g.fillText('TČ', 398, 250); g.fillText('SV', 846, 380); g.fillText('GK', 626, 258);
+    g.font = '24px "Courier New", monospace'; g.fillText('PRÍVOD', 160, 286); g.fillText('SPIATOČKA', 160, 448);
+    g.lineWidth = 3; g.strokeRect(1040, 760, 420, 160); L(1040, 814, 1460, 814); L(1250, 814, 1250, 920);
+    g.font = 'bold 34px Arial, sans-serif'; g.fillText('UKÁŽKA', 1060, 800);
+    g.font = '22px "Courier New", monospace'; g.fillText('M 1:50', 1060, 850); g.fillText('E 4.02', 1270, 850); g.fillText('STROJOVŇA', 1060, 896);
+    // scan dirt: specks and pinholes
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    for (let i = 0; i < 400; i++) { g.fillStyle = '#000'; g.fillRect(120 + rnd() * 2760, 120 + rnd() * 1680, 1 + (rnd() * 2 | 0), 1 + (rnd() * 2 | 0)); }
+    g.fillStyle = '#fff'; for (let i = 0; i < 700; i++) g.fillRect(260 + rnd() * 2120, 595 + (rnd() < .5 ? 0 : 240) + rnd() * 8, 1, 1);
+    return c;
+  }
+
+  function setSource(canvas, dpi, name, isSample) {
+    S.src = canvas; S.dpi = dpi; S.name = name; S.isSample = !!isSample;
+    const g = canvas.getContext('2d', { willReadFrequently: true }), w = canvas.width, h = canvas.height;
+    const hist = new Uint32Array(256);
+    for (let y = 0; y < h; y += 64) {
+      const d = g.getImageData(0, y, w, Math.min(8, h - y)).data;
+      for (let i = 0; i < d.length; i += 4) hist[(d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8]++;
+    }
+    S.hist = hist;
+    fit(); process();
+  }
+
+  async function renderPdfPage(n) {
+    busy('Načítavam stranu ' + n + '…'); await tick();
+    const page = await S.pdf.getPage(n), want = +$('dpi').value;
+    const v1 = page.getViewport({ scale: 1 });
+    const sc = Math.min(want / 72, Math.sqrt(MAX_AREA / (v1.width * v1.height)), MAX_SIDE / Math.max(v1.width, v1.height));
+    const vp = page.getViewport({ scale: sc });
+    const c = document.createElement('canvas'); c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    await page.render({ canvasContext: g, viewport: vp, background: '#fff' }).promise;
+    const eff = Math.round(sc * 72), note = $('dpiNote');
+    note.hidden = eff >= want - 1;
+    note.textContent = 'Výkres je veľký, spracujem ho pri ' + eff + ' dpi, aby sa zmestil do pamäte prehliadača.';
+    setSource(c, sc * 72, S.base, false);
+  }
+
+  async function openFile(file) {
+    if (!file) return;
+    msg('');
+    S.base = file.name.replace(/\.[^.]+$/, '') || 'vykres';
+    $('fname').textContent = file.name;
+    try {
+      if (/pdf$/i.test(file.type) || /\.pdf$/i.test(file.name)) {
+        if (!window.pdfjsLib) throw new Error('Čítačku PDF sa nepodarilo načítať (bez internetu?). Obrázky PNG/JPG fungujú aj tak.');
+        busy('Otváram PDF…'); await tick();
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        S.pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+        const sel = $('page'); sel.innerHTML = '';
+        for (let i = 1; i <= S.pdf.numPages; i++) { const o = document.createElement('option'); o.value = i; o.textContent = i + ' / ' + S.pdf.numPages; sel.appendChild(o); }
+        $('pageRow').hidden = S.pdf.numPages < 2;
+        await renderPdfPage(1);
+      } else {
+        busy('Načítavam obrázok…'); await tick();
+        S.pdf = null; $('pageRow').hidden = true; $('dpiNote').hidden = true;
+        const bmp = await createImageBitmap(file);
+        const sc = Math.min(1, Math.sqrt(MAX_AREA / (bmp.width * bmp.height)), MAX_SIDE / Math.max(bmp.width, bmp.height));
+        const c = document.createElement('canvas'); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+        const g = c.getContext('2d', { willReadFrequently: true });
+        g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(bmp, 0, 0, c.width, c.height);
+        setSource(c, +$('dpi').value * sc, S.base, false);
+      }
+    } catch (e) { idle(); msg('Súbor sa nepodarilo otvoriť: ' + (e && e.message || e)); }
+  }
+
+  // ---------- processing ----------
+  async function process() {
+    if (!S.src) return;
+    const run = ++S.run;
+    busy('Pripravujem obraz…'); await tick();
+    if (run !== S.run) return;
+    const c = S.src, w = c.width, h = c.height, W = w + 2, H = h + 2;
+    const tv = +$('thr').value, thr = tv === 0 ? core.otsu(S.hist) : tv;
+    $('thrVal').textContent = tv === 0 ? 'auto (' + thr + ')' : String(thr);
+    let bm;
+    try {
+      bm = new Uint8Array(W * H);
+      const g = c.getContext('2d', { willReadFrequently: true });
+      for (let y0 = 0; y0 < h; y0 += 512) {
+        const rows = Math.min(512, h - y0), d = g.getImageData(0, y0, w, rows).data;
+        for (let y = 0; y < rows; y++) {
+          let o = (y0 + y + 1) * W + 1, i = y * w * 4;
+          for (let x = 0; x < w; x++, i += 4, o++) if (((d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8) <= thr) bm[o] = 1;
+        }
+      }
+    } catch (e) { idle(); msg('Nedostatok pamäte. Skús nižšie rozlíšenie.'); return; }
+    const opts = { mode: S.mode, turd: +$('turd').value, eps: +$('eps').value, keepFills: $('keepFills').checked, prune: $('prune').checked };
+    let res;
+    try { res = await vectorize(bm, W, H, opts, t => { if (run === S.run) busy(t); }); }
+    catch (e) { if (run === S.run) { idle(); msg('Vektorizácia zlyhala: ' + e.message); } return; }
+    if (run !== S.run) return;
+    res.dpi = S.dpi;
+    S.res = res; S.blobs = {};
+    const f = new Path2D(), l = new Path2D();
+    let d = res.fillsData, o = res.fillsOff;
+    for (let i = 0; i + 1 < o.length; i++) { let s = o[i]; f.moveTo(d[2 * s], d[2 * s + 1]); for (s++; s < o[i + 1]; s++) f.lineTo(d[2 * s], d[2 * s + 1]); f.closePath(); }
+    d = res.linesData; o = res.linesOff;
+    for (let i = 0; i + 1 < o.length; i++) { let s = o[i]; l.moveTo(d[2 * s], d[2 * s + 1]); for (s++; s < o[i + 1]; s++) l.lineTo(d[2 * s], d[2 * s + 1]); if (res.linesClosed[i]) l.closePath(); }
+    S.paths = { f, l };
+    idle(); stats(); draw();
+    document.querySelectorAll('[data-fmt]').forEach(b => { b.disabled = false; });
+    ['szPdf', 'szSvg', 'szDxf'].forEach(id => { $(id).textContent = id === 'szDxf' && inArtifact ? '.zip' : 'stiahnuť'; });
+  }
+
+  const ISO = [['A0', 841, 1189], ['A1', 594, 841], ['A2', 420, 594], ['A3', 297, 420], ['A4', 210, 297]];
+  function stats() {
+    const r = S.res, mmW = r.w * 25.4 / r.dpi, mmH = r.h * 25.4 / r.dpi, a = Math.min(mmW, mmH), b = Math.max(mmW, mmH);
+    const iso = ISO.find(s => Math.abs(a - s[1]) / s[1] < .05 && Math.abs(b - s[2]) / s[2] < .05);
+    const nL = r.linesOff.length - 1, nF = r.fillsOff.length - 1, pts = (r.linesData.length + r.fillsData.length) / 2;
+    const rows = [['Formát', fmtN(mmW) + ' × ' + fmtN(mmH) + ' mm' + (iso ? ' (≈ ' + iso[0] + ')' : '')],
+      ['Raster', fmtN(r.w) + ' × ' + fmtN(r.h) + ' px'], ['Rozlíšenie', Math.round(r.dpi) + ' dpi']];
+    if (S.mode === 'center') rows.push(['Osové čiary', fmtN(nL)], ['Plné plochy', fmtN(nF)], ['Dĺžka čiar', fmtD(r.length * 25.4 / r.dpi / 1000, 1) + ' m'],
+      ['Hrúbka čiary', '≈ ' + fmtD(r.sw * 25.4 / r.dpi, 2) + ' mm']);
+    else rows.push(['Obrysy', fmtN(nF)]);
+    rows.push(['Vrcholy', fmtN(pts)], ['Odstránené škvrny', fmtN(r.removed)], ['Čas výpočtu', fmtD(r.ms / 1000, 1) + ' s']);
+    const dl = $('stats'); dl.innerHTML = '';
+    for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; dl.append(dt, dd); }
+    $('tag').textContent = S.isSample ? 'Ukážkový výkres' : S.name;
+    scaleHint();
+  }
+  function scaleHint() {
+    const n = Math.max(1, +$('scale').value || 1), r = S.res;
+    if (!r) return;
+    const mmW = r.w * 25.4 / r.dpi * n;
+    $('scaleHint').textContent = n === 1 ? 'DXF je v milimetroch papiera. Zadaj mierku z rohovej pečiatky a dostaneš skutočné rozmery.'
+      : 'DXF bude v skutočných milimetroch: šírka listu = ' + fmtD(mmW / 1000, 2) + ' m.';
+  }
+
+  // ---------- viewer ----------
+  const cv = $('view'), ctx = cv.getContext('2d');
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  function fit() {
+    if (!S.src) return;
+    const r = cv.getBoundingClientRect(), pad = 28;
+    S.k = Math.min((r.width - pad * 2) / S.src.width, (r.height - pad * 2 - 30) / S.src.height);
+    if (!(S.k > 0)) S.k = 0.1;
+    S.ox = (r.width - S.src.width * S.k) / 2; S.oy = (r.height - S.src.height * S.k) / 2 + 12;
+    draw();
+  }
+  function draw() {
+    const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    const cw = Math.max(1, Math.round(r.width * dpr)), ch = Math.max(1, Math.round(r.height * dpr));
+    if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cw, ch);
+    if (!S.src) return;
+    ctx.setTransform(S.k * dpr, 0, 0, S.k * dpr, S.ox * dpr, S.oy * dpr);
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, S.src.width, S.src.height);
+    const P = S.paths, v = P ? S.view : 'scan';
+    if (v !== 'vec') {
+      ctx.globalAlpha = v === 'over' ? 0.32 : 1;
+      ctx.imageSmoothingEnabled = S.k < 3;
+      ctx.drawImage(S.src, 0, 0);
+      ctx.globalAlpha = 1;
+    }
+    if (P && v !== 'scan') {
+      const over = v === 'over', col = over ? css('--trace') || '#C81E8A' : '#000';
+      ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      if (over && S.mode === 'outline') { ctx.lineWidth = 1.2 / S.k; ctx.stroke(P.f); }
+      else { if (over) ctx.globalAlpha = 0.75; ctx.fill(P.f, 'evenodd'); ctx.globalAlpha = 1; }
+      ctx.lineWidth = over ? Math.max(1.3 / S.k, S.res.sw * 0.35) : S.res.sw;
+      ctx.stroke(P.l);
+    }
+    // scale bar
+    const mmPerPx = 25.4 / S.dpi / S.k, nice = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+    const mm = nice.find(n => n / mmPerPx >= 70) || 1000;
+    $('scaleTxt').textContent = mm + ' mm';
+    $('scaleLine').style.width = Math.round(mm / mmPerPx) + 'px';
+  }
+  function zoomAt(x, y, f) {
+    const k = Math.min(60, Math.max(0.01, S.k * f)); f = k / S.k;
+    S.ox = x - (x - S.ox) * f; S.oy = y - (y - S.oy) * f; S.k = k; draw();
+  }
+  cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+  const ptr = new Map(); let pinch = 0;
+  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); ptr.set(e.pointerId, [e.clientX, e.clientY]); cv.classList.add('drag'); pinch = 0; });
+  cv.addEventListener('pointermove', e => {
+    const p = ptr.get(e.pointerId); if (!p) return;
+    if (ptr.size === 1) { S.ox += e.clientX - p[0]; S.oy += e.clientY - p[1]; draw(); }
+    ptr.set(e.pointerId, [e.clientX, e.clientY]);
+    if (ptr.size === 2) {
+      const [a, b] = [...ptr.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]), r = cv.getBoundingClientRect();
+      if (pinch) zoomAt((a[0] + b[0]) / 2 - r.left, (a[1] + b[1]) / 2 - r.top, d / pinch);
+      pinch = d;
+    }
+  });
+  const up = e => { ptr.delete(e.pointerId); pinch = 0; if (!ptr.size) cv.classList.remove('drag'); };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  const center = f => { const r = cv.getBoundingClientRect(); zoomAt(r.width / 2, r.height / 2, f); };
+  $('zIn').onclick = () => center(1.5); $('zOut').onclick = () => center(1 / 1.5); $('zFit').onclick = fit;
+  new ResizeObserver(() => draw()).observe($('stage'));
+  if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
+  new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  // ---------- downloads ----------
+  async function build(fmt) {
+    const r = S.res, enc = new TextEncoder(), base = (S.isSample ? 'ukazka' : S.name) + (S.mode === 'center' ? '_osi' : '_obrys');
+    if (fmt === 'svg') return { name: base + '.svg', blob: new Blob([VecExport.svg(r)], { type: 'image/svg+xml' }) };
+    if (fmt === 'pdf') return { name: base + '.pdf', blob: new Blob([await VecExport.pdf(r)], { type: 'application/pdf' }) };
+    const n = Math.max(1, +$('scale').value || 1), txt = VecExport.dxf(r, n);
+    if (!inArtifact) return { name: base + '.dxf', blob: new Blob([txt], { type: 'application/dxf' }) };
+    return { name: base + '_dxf.zip', blob: new Blob([await VecExport.zip(base + '.dxf', enc.encode(txt))], { type: 'application/zip' }) };
+  }
+  async function download(fmt, btn) {
+    if (!S.res) return;
+    btn.disabled = true; msg('Pripravujem ' + fmt.toUpperCase() + '…'); await tick();
+    try {
+      const { name, blob } = await build(fmt);
+      const size = blob.size > 1e6 ? fmtD(blob.size / 1e6, 1) + ' MB' : Math.max(1, Math.round(blob.size / 1e3)) + ' kB';
+      btn.querySelector('small').textContent = size;
+      if (inArtifact) {
+        const dl = await dlReady;
+        if (!dl) { msg('Sťahovanie tu nie je dostupné. Otvor stránku priamo v claude.ai alebo ju spusti na vlastnom webe.'); return; }
+        try { await dl.save({ filename: name, data: blob }); msg('Uložené: ' + name + (fmt === 'dxf' ? '. Rozbaľ .zip a otvor DXF v CAD-e.' : '')); }
+        catch (e) {
+          msg(e && e.code === 'declined' ? 'Uloženie zrušené.' : e && e.code === 'rate_limited' ? 'Chvíľu počkaj a skús to znova.'
+            : 'Súbor sa nepodarilo uložiť (' + (e && e.code || 'chyba') + ').');
+        }
+      } else {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 20000);
+        msg('Stiahnuté: ' + name + ' (' + size + ')');
+      }
+    } catch (e) { msg('Export zlyhal: ' + (e && e.message || e)); }
+    finally { btn.disabled = false; }
+  }
+  document.querySelectorAll('[data-fmt]').forEach(b => b.addEventListener('click', () => download(b.dataset.fmt, b)));
+
+  // ---------- controls ----------
+  let timer = 0;
+  const later = () => { clearTimeout(timer); timer = setTimeout(process, 350); };
+  function modeUI() {
+    const c = S.mode === 'center';
+    $('modeHint').textContent = c ? 'Každá čiara je jedna polyčiara v osi. Vhodné na ďalšiu prácu v CAD-e.'
+      : 'Verná kópia tvaru: každá čiara je uzavretý obrys. Vhodné na tlač a ako podklad.';
+    $('fillsRow').hidden = !c; $('pruneRow').hidden = !c;
+    document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)));
+  }
+  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { S.mode = b.dataset.mode; modeUI(); process(); }));
+  document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
+    S.view = b.dataset.view;
+    document.querySelectorAll('[data-view]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    draw();
+  }));
+  $('thr').oninput = () => { const v = +$('thr').value; $('thrVal').textContent = v === 0 ? 'auto' : String(v); later(); };
+  $('turd').oninput = () => { $('turdVal').textContent = $('turd').value + ' px'; later(); };
+  $('eps').oninput = () => { $('epsVal').textContent = fmtD(+$('eps').value, 1) + ' px'; later(); };
+  $('keepFills').onchange = process; $('prune').onchange = process;
+  $('scale').oninput = scaleHint;
+  $('dpi').onchange = () => {
+    if (S.pdf) renderPdfPage(+$('page').value || 1).catch(e => { idle(); msg('Stranu sa nepodarilo načítať: ' + e.message); });
+    else if (!S.isSample && S.src) { S.dpi = +$('dpi').value; process(); }
+  };
+  $('page').onchange = () => renderPdfPage(+$('page').value).catch(e => { idle(); msg('Stranu sa nepodarilo načítať: ' + e.message); });
+  $('pick').onclick = () => $('file').click();
+  $('file').onchange = e => { openFile(e.target.files[0]); e.target.value = ''; };
+  const drop = $('drop');
+  ['dragenter', 'dragover'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  document.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) openFile(f); });
+
+  modeUI();
+  setSource(sampleCanvas(), 300, 'ukazka', true);
+})();
+</script>

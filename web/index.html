@@ -1,0 +1,1151 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>body{margin:0}[hidden]{display:none!important}</style>
+<title>Vektorizér výkresov</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap">
+<style>
+/* Layout: a drafting desk. Narrow control rail on the left, the sheet fills the rest. */
+:root {
+  --bg: #E9EDF1; --panel: #F7F9FB; --line: #C9D1D9; --fg: #14202B; --muted: #566575;
+  --accent: #0A63C2; --accent-fg: #FFFFFF; --trace: #C81E8A; --desk: #D3DAE1; --warn: #9A5B00;
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --cond: "IBM Plex Sans Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E141A; --panel: #161E26; --line: #2B3743; --fg: #E4EBF1; --muted: #93A2B2;
+    --accent: #58A6FF; --accent-fg: #06121F; --trace: #FF62C6; --desk: #090D11; --warn: #F0B45A; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E141A; --panel: #161E26; --line: #2B3743; --fg: #E4EBF1; --muted: #93A2B2;
+  --accent: #58A6FF; --accent-fg: #06121F; --trace: #FF62C6; --desk: #090D11; --warn: #F0B45A; color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.45 var(--sans); }
+* { box-sizing: border-box; }
+.app { height: 100%; display: grid; grid-template-columns: 330px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; padding-block: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-bottom: 1px solid var(--line); }
+h1 { margin: 0; font: 600 20px/1.2 var(--cond); letter-spacing: .02em; text-transform: uppercase; }
+header p { margin: 0; color: var(--muted); font-size: 13px; }
+aside { overflow-y: auto; padding-block: 14px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px;
+  border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; gap: 16px; }
+fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+legend { padding: 0; margin-bottom: 7px; font: 600 12px/1 var(--cond); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+label { display: block; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.row > span:first-child { min-width: 0; }
+.val { font: 500 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0 0; }
+select, input[type=number] { font: 500 13px var(--mono); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 7px; }
+input[type=number] { width: 84px; }
+.check { display: flex; gap: 8px; align-items: flex-start; }
+.check input { margin-top: 3px; accent-color: var(--accent); }
+.hint { color: var(--muted); font-size: 12px; margin: 0; }
+button { font: 500 13px var(--sans); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 7px 11px; cursor: pointer; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .45; cursor: default; }
+button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.drop { border: 1.5px dashed var(--line); border-radius: 6px; padding: 12px; text-align: center; background: var(--bg); }
+.drop.over { border-color: var(--accent); }
+.drop button { width: 100%; }
+.drop .name { margin-top: 8px; font: 12px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; background: var(--bg); padding: 7px 6px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed=true] { background: var(--fg); color: var(--bg); }
+.dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.dl button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 4px; }
+.dl b { font: 600 15px var(--cond); letter-spacing: .05em; }
+.dl small { font: 11px var(--mono); opacity: .85; }
+dl.stats { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 12px; }
+dl.stats dt { color: var(--muted); }
+dl.stats dd { margin: 0; font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+main { position: relative; min-width: 0; min-height: 0; background: var(--desk); overflow: hidden; }
+canvas#view { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; display: block; }
+canvas#view.drag { cursor: grabbing; }
+.bar { position: absolute; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.bar.top { top: 10px; left: 10px; right: max(10px, env(safe-area-inset-right, 0px)); justify-content: space-between; pointer-events: none; }
+.bar.top > * { pointer-events: auto; }
+.bar .seg, .zoom { background: var(--panel); box-shadow: 0 1px 4px rgb(0 0 0 / .18); }
+.zoom { display: flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.zoom button { border: 0; border-radius: 0; background: var(--panel); min-width: 36px; }
+.zoom button + button { border-left: 1px solid var(--line); }
+.scale { position: absolute; left: 12px; bottom: 12px; padding: 5px 8px 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; font: 500 11px var(--mono); }
+.scale i { display: block; height: 5px; margin-top: 3px; border: 1.5px solid var(--fg); border-top: 0; }
+.tag { position: absolute; right: 12px; bottom: 12px; padding: 5px 9px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; font-size: 12px; color: var(--muted); max-width: 60%; }
+.busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 12px 18px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 6px; font-weight: 500; box-shadow: 0 4px 18px rgb(0 0 0 / .25); display: flex; gap: 10px; align-items: center; max-width: 80%; }
+.busy::before { content: ""; width: 14px; height: 14px; flex: none; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .busy::before { animation: none; } }
+.note { color: var(--warn); font-size: 12px; margin: 0; }
+@media (max-width: 760px) {
+  html, body { height: auto; }
+  .app { display: flex; flex-direction: column; height: auto; }
+  main { order: 1; }
+  aside { order: 2; }
+  aside { border-right: 0; border-top: 1px solid var(--line); padding-right: max(16px, env(safe-area-inset-right, 0px)); overflow: visible; }
+  main { height: min(68svh, 560px); }
+}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Vektorizér výkresov</h1>
+    <p>Sken v PDF → vektorové PDF, SVG a DXF. Všetko sa počíta v tvojom prehliadači, súbor nikam neodchádza.</p>
+  </header>
+
+  <aside>
+    <fieldset>
+      <legend>Vstup</legend>
+      <div class="drop" id="drop">
+        <button class="primary" id="pick" type="button">Vybrať PDF alebo obrázok</button>
+        <input type="file" id="file" accept=".pdf,application/pdf,image/png,image/jpeg,image/webp,image/bmp" hidden>
+        <div class="name" id="fname">Ukážkový výkres. Vlož sem vlastný sken.</div>
+      </div>
+      <label class="row" id="pageRow" hidden><span>Strana</span><select id="page"></select></label>
+      <label class="row"><span>Rozlíšenie spracovania</span>
+        <select id="dpi"><option>150</option><option>200</option><option selected>300</option><option>400</option></select></label>
+      <p class="note" id="dpiNote" hidden></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Spôsob vektorizácie</legend>
+      <div class="seg" role="group" aria-label="Spôsob vektorizácie">
+        <button type="button" data-mode="center" aria-pressed="true">Osové čiary</button>
+        <button type="button" data-mode="outline" aria-pressed="false">Obrys</button>
+      </div>
+      <p class="hint" id="modeHint"></p>
+      <label class="check" id="fillsRow"><input type="checkbox" id="keepFills" checked><span>Plné plochy (šípky, hrubé písmo) nechať ako obrys</span></label>
+      <label class="check" id="pruneRow"><input type="checkbox" id="prune" checked><span>Odstrániť krátke výbežky na čiarach</span></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Čistenie</legend>
+      <label><span class="row"><span>Prah čiernej</span><span class="val" id="thrVal">auto</span></span>
+        <input type="range" id="thr" min="0" max="250" step="5" value="0" aria-describedby="thrHelp"></label>
+      <p class="hint" id="thrHelp">Úplne vľavo = automaticky. Vyššia hodnota zachytí aj bledé čiary.</p>
+      <label><span class="row"><span>Odstrániť škvrny do</span><span class="val" id="turdVal">6 px</span></span>
+        <input type="range" id="turd" min="0" max="40" step="1" value="6"></label>
+      <label><span class="row"><span>Zjednodušenie čiar</span><span class="val" id="epsVal">1,0 px</span></span>
+        <input type="range" id="eps" min="0.4" max="3" step="0.1" value="1"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Stiahnuť</legend>
+      <label class="row"><span>Mierka výkresu pre DXF&nbsp; 1 :</span><input type="number" id="scale" min="1" max="5000" step="1" value="1"></label>
+      <p class="hint" id="scaleHint"></p>
+      <div class="dl">
+        <button type="button" data-fmt="pdf" disabled><b>PDF</b><small id="szPdf">–</small></button>
+        <button type="button" data-fmt="svg" disabled><b>SVG</b><small id="szSvg">–</small></button>
+        <button type="button" data-fmt="dxf" disabled><b>DXF</b><small id="szDxf">–</small></button>
+      </div>
+      <p class="hint" id="msg" role="status" aria-live="polite"></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Výsledok</legend>
+      <dl class="stats" id="stats"></dl>
+    </fieldset>
+  </aside>
+
+  <main id="stage">
+    <canvas id="view" aria-label="Náhľad výkresu"></canvas>
+    <div class="bar top">
+      <div class="seg" role="group" aria-label="Zobrazenie">
+        <button type="button" data-view="scan" aria-pressed="false">Sken</button>
+        <button type="button" data-view="over" aria-pressed="true">Prekrytie</button>
+        <button type="button" data-view="vec" aria-pressed="false">Vektor</button>
+      </div>
+      <div class="zoom">
+        <button type="button" id="zOut" aria-label="Oddialiť">−</button>
+        <button type="button" id="zFit">Celý</button>
+        <button type="button" id="zIn" aria-label="Priblížiť">+</button>
+      </div>
+    </div>
+    <div class="scale" id="scaleBar"><span id="scaleTxt">10 mm</span><i id="scaleLine"></i></div>
+    <div class="tag" id="tag"></div>
+    <div class="busy" id="busy" hidden><span id="busyTxt">Pracujem…</span></div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script>
+function VecCore() {
+  'use strict';
+  // All bitmaps are padded by 1 px on every side: W = w + 2, H = h + 2. Ink = 1.
+
+  function otsu(hist) {
+    let total = 0, sum = 0;
+    for (let i = 0; i < 256; i++) { total += hist[i]; sum += i * hist[i]; }
+    let sumB = 0, wB = 0, best = 0, thr = 128;
+    for (let t = 0; t < 256; t++) {
+      wB += hist[t]; if (!wB) continue;
+      const wF = total - wB; if (!wF) break;
+      sumB += t * hist[t];
+      const mB = sumB / wB, mF = (sum - sumB) / wF, v = wB * wF * (mB - mF) * (mB - mF);
+      if (v > best) { best = v; thr = t; }
+    }
+    return thr;
+  }
+
+  // Remove connected blobs (8-connected) of at most maxPx pixels.
+  function despeckle(bm, W, H, maxPx) {
+    const N = W * H;
+    if (maxPx <= 0) return 0;
+    let stack = new Int32Array(1 << 16), removed = 0;
+    const comp = new Int32Array(maxPx + 1);
+    const offs = [-W - 1, -W, -W + 1, -1, 1, W - 1, W, W + 1];
+    for (let i = W + 1; i < N - W - 1; i++) {
+      if (bm[i] !== 1) continue;
+      let sp = 0, n = 0;
+      stack[sp++] = i; bm[i] = 2;
+      while (sp) {
+        const p = stack[--sp];
+        if (n <= maxPx) comp[n] = p;
+        n++;
+        for (let k = 0; k < 8; k++) {
+          const q = p + offs[k];
+          if (bm[q] === 1) {
+            bm[q] = 2;
+            if (sp === stack.length) { const s2 = new Int32Array(sp * 2); s2.set(stack); stack = s2; }
+            stack[sp++] = q;
+          }
+        }
+      }
+      if (n <= maxPx) { for (let k = 0; k < n; k++) bm[comp[k]] = 0; removed++; }
+    }
+    for (let i = 0; i < N; i++) if (bm[i] === 2) bm[i] = 1;
+    return removed;
+  }
+
+  // Fill pinholes: white regions (4-connected) of at most maxPx pixels enclosed by ink.
+  function fillHoles(bm, W, H, maxPx) {
+    if (maxPx <= 0) return 0;
+    const q = new Int32Array(maxPx + 2), offs = [-W, 1, W, -1];
+    let filled = 0;
+    for (let y = 1; y < H - 1; y++) {
+      const o = y * W;
+      for (let x = 2; x < W - 1; x++) {
+        const i = o + x;
+        if (bm[i] !== 0 || bm[i - 1] !== 1) continue;
+        let n = 0, head = 0, open = false;
+        q[n++] = i; bm[i] = 4;
+        while (head < n) {
+          const p = q[head++];
+          for (let k = 0; k < 4; k++) {
+            const t = p + offs[k];
+            if (bm[t] === 0) {
+              if (n > maxPx) { open = true; break; }
+              bm[t] = 4; q[n++] = t;
+            }
+          }
+          if (open) break;
+        }
+        const v = open ? 0 : 1;
+        for (let k = 0; k < n; k++) bm[q[k]] = v;
+        if (!open) filled++;
+      }
+    }
+    return filled;
+  }
+
+  // Typical stroke width = median length of ink runs (rows and columns).
+  function strokeWidth(bm, W, H) {
+    const hist = new Uint32Array(128);
+    let total = 0;
+    const cnt = new Int32Array(W);
+    for (let y = 1; y < H; y++) {
+      const o = y * W;
+      let run = 0;
+      for (let x = 1; x < W; x++) {
+        if (bm[o + x]) { run++; cnt[x]++; }
+        else {
+          if (run) { hist[run > 127 ? 127 : run]++; total++; run = 0; }
+          const c = cnt[x];
+          if (c) { hist[c > 127 ? 127 : c]++; total++; cnt[x] = 0; }
+        }
+      }
+    }
+    if (!total) return 1;
+    let acc = 0;
+    for (let i = 1; i < 128; i++) { acc += hist[i]; if (acc * 2 >= total) return i; }
+    return 3;
+  }
+
+  // Mask of "solid" regions: ink that survives erosion by a (2k+1) square, grown back.
+  function thickMask(bm, W, H, k) {
+    const N = W * H, need = 2 * k + 1, r = k + 2;
+    const a = new Uint8Array(N), b = new Uint8Array(N);
+    for (let y = 0; y < H; y++) {
+      const o = y * W; let c = 0;
+      for (let x = 0; x < W; x++) { if (bm[o + x]) { if (++c >= need) a[o + x - k] = 1; } else c = 0; }
+    }
+    const cnt = new Int32Array(W);
+    let any = 0;
+    for (let y = 0; y < H; y++) {
+      const o = y * W;
+      for (let x = 0; x < W; x++) {
+        if (a[o + x]) { if (++cnt[x] >= need) { b[o + x - k * W] = 1; any++; } } else cnt[x] = 0;
+      }
+    }
+    if (!any) return null;
+    a.fill(0);
+    for (let y = 0; y < H; y++) {
+      const o = y * W; let d = 1e9;
+      for (let x = 0; x < W; x++) { if (b[o + x]) d = 0; else d++; if (d <= r) a[o + x] = 1; }
+      d = 1e9;
+      for (let x = W - 1; x >= 0; x--) { if (b[o + x]) d = 0; else d++; if (d <= r) a[o + x] = 1; }
+    }
+    b.fill(0);
+    const dist = new Int32Array(W).fill(1e9);
+    for (let y = 0; y < H; y++) {
+      const o = y * W;
+      for (let x = 0; x < W; x++) { if (a[o + x]) dist[x] = 0; else dist[x]++; if (dist[x] <= r) b[o + x] = 1; }
+    }
+    dist.fill(1e9);
+    for (let y = H - 1; y >= 0; y--) {
+      const o = y * W;
+      for (let x = 0; x < W; x++) { if (a[o + x]) dist[x] = 0; else dist[x]++; if (dist[x] <= r) b[o + x] = 1; }
+    }
+    for (let i = 0; i < N; i++) b[i] &= bm[i];
+    return b;
+  }
+
+  // Growable flat coordinate store: points in data, polyline boundaries in off.
+  function Store() {
+    this.data = new Float32Array(1 << 16); this.n = 0;
+    this.off = new Int32Array(1 << 12); this.m = 0;
+    this.closed = new Uint8Array(1 << 12);
+    this.off[0] = 0;
+  }
+  Store.prototype.push = function (x, y) {
+    if (this.n + 2 > this.data.length) { const d = new Float32Array(this.data.length * 2); d.set(this.data); this.data = d; }
+    this.data[this.n++] = x; this.data[this.n++] = y;
+  };
+  Store.prototype.end = function (closed) {
+    if (this.m + 2 > this.off.length) {
+      const o = new Int32Array(this.off.length * 2); o.set(this.off); this.off = o;
+      const c = new Uint8Array(this.closed.length * 2); c.set(this.closed); this.closed = c;
+    }
+    this.closed[this.m] = closed ? 1 : 0;
+    this.off[++this.m] = this.n >> 1;
+  };
+  Store.prototype.pack = function () {
+    return { data: this.data.slice(0, this.n), off: this.off.slice(0, this.m + 1), closed: this.closed.slice(0, this.m) };
+  };
+
+  // Douglas-Peucker on xs/ys[0..n-1] (open). Marks keep[].
+  function dp(xs, ys, s0, e0, eps, keep, stack) {
+    let sp = 0; stack[sp++] = s0; stack[sp++] = e0;
+    keep[s0] = 1; keep[e0] = 1;
+    while (sp) {
+      const e = stack[--sp], s = stack[--sp];
+      if (e <= s + 1) continue;
+      const x1 = xs[s], y1 = ys[s], dx = xs[e] - x1, dy = ys[e] - y1, len = Math.sqrt(dx * dx + dy * dy);
+      let dmax = -1, k = -1;
+      for (let i = s + 1; i < e; i++) {
+        const d = len > 0 ? Math.abs(dy * (xs[i] - x1) - dx * (ys[i] - y1)) / len
+          : Math.sqrt((xs[i] - x1) * (xs[i] - x1) + (ys[i] - y1) * (ys[i] - y1));
+        if (d > dmax) { dmax = d; k = i; }
+      }
+      if (dmax > eps) { keep[k] = 1; stack[sp++] = s; stack[sp++] = k; stack[sp++] = k; stack[sp++] = e; }
+    }
+  }
+
+  // Trace boundaries of ink (8-connected) into closed polygons on pixel edges.
+  // Mutates bm (visited left edges become 3).
+  function traceOutlines(bm, W, H, minArea, eps, store) {
+    const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
+    let cap = 1 << 12, xs = new Float64Array(cap), ys = new Float64Array(cap);
+    let keep = new Uint8Array(cap), stack = new Int32Array(cap * 2 + 8);
+    let count = 0;
+    for (let y = 1; y < H - 1; y++) {
+      const o = y * W;
+      for (let x = 1; x < W - 1; x++) {
+        if (bm[o + x] !== 1 || bm[o + x - 1]) continue;
+        let vx = x, vy = y + 1, d = 0, n = 0;
+        do {
+          if (d === 0) bm[(vy - 1) * W + vx] = 3;
+          vx += DX[d]; vy += DY[d];
+          const p = vy * W + vx;
+          const NW = bm[p - W - 1], NE = bm[p - W], SW = bm[p - 1], SE = bm[p];
+          let AL, AR;
+          if (d === 0) { AL = NW; AR = NE; } else if (d === 1) { AL = NE; AR = SE; }
+          else if (d === 2) { AL = SE; AR = SW; } else { AL = SW; AR = NW; }
+          const nd = AL ? (d + 3) & 3 : AR ? d : (d + 1) & 3;
+          if (nd !== d) {
+            if (n === cap) {
+              cap *= 2;
+              const a = new Float64Array(cap); a.set(xs); xs = a;
+              const b = new Float64Array(cap); b.set(ys); ys = b;
+              keep = new Uint8Array(cap); stack = new Int32Array(cap * 2 + 8);
+            }
+            xs[n] = vx - 1; ys[n] = vy - 1; n++;   // -1 removes the padding
+            d = nd;
+          }
+        } while (!(vx === x && vy === y + 1 && d === 0));
+        if (n < 4) continue;
+        let area = 0;
+        for (let i = 0, j = n - 1; i < n; j = i++) area += xs[j] * ys[i] - xs[i] * ys[j];
+        if (Math.abs(area) / 2 < minArea) continue;
+        // closed DP: split at the point farthest from point 0
+        let far = 0, fd = -1;
+        for (let i = 1; i < n; i++) {
+          const dd = (xs[i] - xs[0]) * (xs[i] - xs[0]) + (ys[i] - ys[0]) * (ys[i] - ys[0]);
+          if (dd > fd) { fd = dd; far = i; }
+        }
+        keep.fill(0, 0, n + 1);
+        xs[n] = xs[0]; ys[n] = ys[0];
+        dp(xs, ys, 0, far, eps, keep, stack);
+        dp(xs, ys, far, n, eps, keep, stack);
+        let kept = 0;
+        for (let i = 0; i < n; i++) if (keep[i]) kept++;
+        if (kept < 3) continue;
+        for (let i = 0; i < n; i++) if (keep[i]) store.push(xs[i], ys[i]);
+        store.end(true);
+        count++;
+      }
+    }
+    return count;
+  }
+
+  // Zhang-Suen thinning, list based. Returns { list, n } of skeleton pixel indices.
+  function thin(bm, W, H) {
+    const N = W * H;
+    let n = 0;
+    for (let i = 0; i < N; i++) if (bm[i]) n++;
+    const ink = n;
+    let list = new Int32Array(n), del = new Int32Array(n);
+    n = 0;
+    for (let i = 0; i < N; i++) if (bm[i]) list[n++] = i;
+    let changed = true, iter = 0;
+    while (changed && iter < 200) {
+      changed = false; iter++;
+      for (let sub = 0; sub < 2; sub++) {
+        let nd = 0;
+        for (let k = 0; k < n; k++) {
+          const p = list[k];
+          const p2 = bm[p - W], p3 = bm[p - W + 1], p4 = bm[p + 1], p5 = bm[p + W + 1],
+            p6 = bm[p + W], p7 = bm[p + W - 1], p8 = bm[p - 1], p9 = bm[p - W - 1];
+          const B = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+          if (B < 2 || B > 6) continue;
+          const A = (!p2 && p3) + (!p3 && p4) + (!p4 && p5) + (!p5 && p6) + (!p6 && p7) + (!p7 && p8) + (!p8 && p9) + (!p9 && p2);
+          if (A !== 1) continue;
+          if (sub === 0) { if (p2 * p4 * p6 || p4 * p6 * p8) continue; }
+          else { if (p2 * p4 * p8 || p2 * p6 * p8) continue; }
+          del[nd++] = p;
+        }
+        if (nd) {
+          changed = true;
+          for (let k = 0; k < nd; k++) bm[del[k]] = 0;
+          let m = 0;
+          for (let k = 0; k < n; k++) { const p = list[k]; if (bm[p]) list[m++] = p; }
+          n = m;
+        }
+      }
+    }
+    return { list, n, ink };
+  }
+
+  // Skeleton pixels -> polylines (arrays of pixel indices) with spur pruning and chain merging.
+  function skeletonGraph(bm, W, list, n, spurLen) {
+    const nb = new Int32Array(8);
+    function nbrs(p) {
+      let c = 0;
+      const N = bm[p - W], E = bm[p + 1], S = bm[p + W], Wt = bm[p - 1];
+      if (N) nb[c++] = p - W; if (E) nb[c++] = p + 1; if (S) nb[c++] = p + W; if (Wt) nb[c++] = p - 1;
+      if (!N && !E && bm[p - W + 1]) nb[c++] = p - W + 1;
+      if (!S && !E && bm[p + W + 1]) nb[c++] = p + W + 1;
+      if (!S && !Wt && bm[p + W - 1]) nb[c++] = p + W - 1;
+      if (!N && !Wt && bm[p - W - 1]) nb[c++] = p - W - 1;
+      return c;
+    }
+    // bm value becomes 16 + degree; bit 32 = visited
+    const degs = new Uint8Array(n);
+    for (let k = 0; k < n; k++) degs[k] = nbrs(list[k]);
+    for (let k = 0; k < n; k++) bm[list[k]] = 16 + degs[k];
+    const polys = [];
+    const dots = [];
+    const loc = new Int32Array(8);
+    for (let k = 0; k < n; k++) {
+      const p = list[k], dg = degs[k];
+      if (dg === 2) continue;
+      if (dg === 0) { dots.push(p); continue; }
+      const c = nbrs(p);
+      for (let j = 0; j < c; j++) loc[j] = nb[j];
+      for (let j = 0; j < c; j++) {
+        const q = loc[j], vq = bm[q];
+        if ((vq & 15) !== 2) { if (p < q) polys.push({ pts: [p, q], closed: false }); continue; }
+        if (vq & 32) continue;
+        const path = [p, q];
+        bm[q] |= 32;
+        let prev = p, cur = q;
+        for (;;) {
+          nbrs(cur);
+          const nx = nb[0] === prev ? nb[1] : nb[0];
+          path.push(nx);
+          const vn = bm[nx];
+          if ((vn & 15) !== 2 || (vn & 32)) break;
+          bm[nx] |= 32; prev = cur; cur = nx;
+        }
+        polys.push({ pts: path, closed: false });
+      }
+    }
+    for (let k = 0; k < n; k++) {     // pure loops
+      const p = list[k];
+      if (degs[k] !== 2 || (bm[p] & 32)) continue;
+      const path = [p];
+      bm[p] |= 32;
+      nbrs(p);
+      let prev = p, cur = nb[0];
+      while (cur !== p && !(bm[cur] & 32)) {
+        bm[cur] |= 32; path.push(cur);
+        nbrs(cur);
+        const nx = nb[0] === prev ? nb[1] : nb[0];
+        prev = cur; cur = nx;
+      }
+      polys.push({ pts: path, closed: true });
+    }
+    // endpoint map
+    const ends = new Map();
+    const add = (p, pl) => { const a = ends.get(p); if (a) a.push(pl); else ends.set(p, [pl]); };
+    for (const pl of polys) if (!pl.closed) { add(pl.pts[0], pl); add(pl.pts[pl.pts.length - 1], pl); }
+    // prune short spurs: one free end, other end at a junction
+    if (spurLen > 0) {
+      for (const pl of polys) {
+        if (pl.closed || pl.pts.length > spurLen) continue;
+        const a = pl.pts[0], b = pl.pts[pl.pts.length - 1];
+        const ca = ends.get(a).length, cb = ends.get(b).length;
+        if ((ca === 1 && cb >= 3) || (cb === 1 && ca >= 3)) {
+          pl.dead = true;
+          const ea = ends.get(a); ea.splice(ea.indexOf(pl), 1);
+          const eb = ends.get(b); eb.splice(eb.indexOf(pl), 1);
+        }
+      }
+    }
+    // merge chains through nodes where exactly two polylines meet
+    for (const [node, arr] of ends) {
+      if (arr.length !== 2) continue;
+      const a = arr[0], b = arr[1];
+      if (a === b) { a.closed = true; a.pts.pop(); arr.length = 0; continue; }
+      if (a.pts[a.pts.length - 1] !== node) a.pts.reverse();
+      if (b.pts[0] !== node) b.pts.reverse();
+      for (let i = 1; i < b.pts.length; i++) a.pts.push(b.pts[i]);
+      b.dead = true; arr.length = 0;
+      const other = b.pts[b.pts.length - 1], eo = ends.get(other);
+      eo[eo.indexOf(b)] = a;
+    }
+    return { polys, dots };
+  }
+
+  // Pixel chains -> smoothed, simplified polylines. Corners and end nodes stay fixed,
+  // everything between is averaged so scan jitter does not turn into wobble.
+  function polysToStore(polys, dots, W, eps, store) {
+    let cap = 1 << 12, rx, ry, xs, ys, keep, stack, fix;
+    const alloc = () => {
+      rx = new Float64Array(cap); ry = new Float64Array(cap); xs = new Float64Array(cap); ys = new Float64Array(cap);
+      keep = new Uint8Array(cap); stack = new Int32Array(cap * 2 + 8); fix = new Uint8Array(cap);
+    };
+    alloc();
+    const K = 4, COS = Math.cos(50 * Math.PI / 180), WT = [3, 2, 1];
+    let len = 0;
+    for (const pl of polys) {
+      if (pl.dead) continue;
+      const pts = pl.pts, n0 = pts.length, n = pl.closed ? n0 + 1 : n0;
+      if (n + 1 > cap) { while (cap < n + 1) cap *= 2; alloc(); }
+      for (let i = 0; i < n0; i++) { const p = pts[i]; rx[i] = (p % W) - 0.5; ry[i] = ((p / W) | 0) - 0.5; }
+      if (pl.closed) { rx[n0] = rx[0]; ry[n0] = ry[0]; }
+      fix.fill(0, 0, n); fix[0] = 1; fix[n - 1] = 1;
+      for (let i = K; i < n - K; i++) {
+        const ax = rx[i] - rx[i - K], ay = ry[i] - ry[i - K], bx = rx[i + K] - rx[i], by = ry[i + K] - ry[i];
+        const d = Math.sqrt((ax * ax + ay * ay) * (bx * bx + by * by));
+        if (d > 0 && (ax * bx + ay * by) / d < COS) fix[i] = 1;
+      }
+      let prevFix = 0, nextFix = 0;
+      for (let i = 0; i < n; i++) {
+        if (fix[i]) { xs[i] = rx[i]; ys[i] = ry[i]; prevFix = i; continue; }
+        if (nextFix <= i) { nextFix = i + 1; while (!fix[nextFix]) nextFix++; }
+        const r = Math.min(2, i - prevFix, nextFix - i);
+        let sx = 0, sy = 0, sw = 0;
+        for (let k = -r; k <= r; k++) { const w = WT[k < 0 ? -k : k]; sx += w * rx[i + k]; sy += w * ry[i + k]; sw += w; }
+        xs[i] = sx / sw; ys[i] = sy / sw;
+      }
+      keep.fill(0, 0, n);
+      if (pl.closed) {
+        const mid = n0 >> 1;
+        dp(xs, ys, 0, mid, eps, keep, stack); dp(xs, ys, mid, n0, eps, keep, stack);
+        keep[n0] = 0;
+      } else dp(xs, ys, 0, n - 1, eps, keep, stack);
+      let px = 0, py = 0, first = true, fx = 0, fy = 0;
+      for (let i = 0; i < n; i++) {
+        if (!keep[i]) continue;
+        store.push(xs[i], ys[i]);
+        if (first) { first = false; fx = xs[i]; fy = ys[i]; } else len += Math.hypot(xs[i] - px, ys[i] - py);
+        px = xs[i]; py = ys[i];
+      }
+      if (pl.closed) len += Math.hypot(fx - px, fy - py);
+      store.end(pl.closed);
+    }
+    for (const p of dots) {
+      const x = (p % W) - 0.5, y = ((p / W) | 0) - 0.5;
+      store.push(x, y); store.push(x + 0.01, y); store.end(false);
+    }
+    return len;
+  }
+
+  /**
+   * bm: padded bitmap (W*H, ink=1); opts: { mode: 'center'|'outline', turd, eps, keepFills, prune }
+   */
+  function vectorize(bm, W, H, opts, progress) {
+    const t0 = Date.now();
+    const say = progress || function () {};
+    const fills = new Store(), lines = new Store();
+    say('Čistím škvrny…');
+    const removed = despeckle(bm, W, H, opts.turd | 0);
+    fillHoles(bm, W, H, Math.max(opts.turd | 0, 4));
+    const sw = strokeWidth(bm, W, H);
+    let length = 0, drawW = sw;
+    if (opts.mode === 'outline') {
+      say('Sledujem obrysy…');
+      traceOutlines(bm, W, H, 2, opts.eps, fills);
+    } else {
+      if (opts.keepFills) {
+        say('Hľadám plné plochy…');
+        const mask = thickMask(bm, W, H, Math.max(2, Math.round(sw * 1.1)));
+        if (mask) {
+          for (let i = 0, N = W * H; i < N; i++) if (mask[i]) bm[i] = 0;
+          traceOutlines(mask, W, H, 2, Math.min(opts.eps, 0.8), fills);
+        }
+      }
+      say('Stenčujem čiary na osi…');
+      const sk = thin(bm, W, H);
+      say('Skladám čiary…');
+      const g = skeletonGraph(bm, W, sk.list, sk.n, opts.prune ? Math.max(3, Math.round(sw * 1.6)) : 0);
+      length = polysToStore(g.polys, g.dots, W, opts.eps * 0.6, lines);
+      if (length > 0) drawW = Math.max(1, Math.min(sw, sk.ink / length));
+    }
+    const f = fills.pack(), l = lines.pack();
+    return {
+      w: W - 2, h: H - 2, sw: drawW, medianW: sw, removed: removed, length: length, ms: Date.now() - t0,
+      fillsData: f.data, fillsOff: f.off,
+      linesData: l.data, linesOff: l.off, linesClosed: l.closed
+    };
+  }
+
+  return { vectorize: vectorize, otsu: otsu };
+}
+
+// Export writers. res = result of VecCore().vectorize plus { dpi }.
+const VecExport = (function () {
+  'use strict';
+  const r1 = v => Math.round(v * 10) / 10;
+
+  function eachPoly(data, off, fn) {
+    for (let i = 0; i + 1 < off.length; i++) fn(off[i], off[i + 1], i);
+  }
+
+  // Returns path data in chunks (very long single attributes break some SVG readers).
+  function pathD(data, off, closedArr, allClosed) {
+    const chunks = [];
+    let out = [], size = 0;
+    eachPoly(data, off, (s, e, i) => {
+      if (size > 400000) { chunks.push(out.join('')); out = []; size = 0; }
+      let str = 'M' + r1(data[2 * s]) + ' ' + r1(data[2 * s + 1]);
+      for (let k = s + 1; k < e; k++) str += ' ' + r1(data[2 * k]) + ' ' + r1(data[2 * k + 1]);
+      if (allClosed || (closedArr && closedArr[i])) str += 'Z';
+      out.push(str); size += str.length;
+    });
+    if (out.length) chunks.push(out.join(''));
+    return chunks;
+  }
+
+  function svg(res) {
+    const mmW = (res.w * 25.4 / res.dpi).toFixed(2), mmH = (res.h * 25.4 / res.dpi).toFixed(2);
+    let s = '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="' + mmW + 'mm" height="' + mmH +
+      'mm" viewBox="0 0 ' + res.w + ' ' + res.h + '">\n';
+    if (res.fillsOff.length > 1)
+      s += '<g id="plochy" fill="#000" fill-rule="evenodd">\n' +
+        pathD(res.fillsData, res.fillsOff, null, true).map(d => '<path d="' + d + '"/>').join('\n') + '\n</g>\n';
+    if (res.linesOff.length > 1)
+      s += '<g id="osi" fill="none" stroke="#000" stroke-width="' + r1(res.sw) + '" stroke-linecap="round" stroke-linejoin="round">\n' +
+        pathD(res.linesData, res.linesOff, res.linesClosed, false).map(d => '<path d="' + d + '"/>').join('\n') + '\n</g>\n';
+    return s + '</svg>\n';
+  }
+
+  // ASCII DXF, R12 (AC1009): opens in AutoCAD, ZWCAD, DDS-CAD, LibreCAD. Units: mm, Y up.
+  function dxf(res, scale) {
+    const k = 25.4 / res.dpi * (scale || 1), h = res.h;
+    const X = v => (v * k).toFixed(3), Y = v => ((h - v) * k).toFixed(3);
+    const o = [];
+    const layers = [];
+    if (res.linesOff.length > 1) layers.push(['OSI', 7]);
+    if (res.fillsOff.length > 1) layers.push([res.linesOff.length > 1 ? 'PLOCHY' : 'OBRYS', res.linesOff.length > 1 ? 8 : 7]);
+    if (!layers.length) layers.push(['OSI', 7]);
+    o.push('0\nSECTION\n2\nHEADER\n9\n$ACADVER\n1\nAC1009\n9\n$INSBASE\n10\n0.0\n20\n0.0\n30\n0.0\n' +
+      '9\n$EXTMIN\n10\n0.0\n20\n0.0\n30\n0.0\n9\n$EXTMAX\n10\n' + X(res.w) + '\n20\n' + (h * k).toFixed(3) + '\n30\n0.0\n' +
+      '9\n$LIMMIN\n10\n0.0\n20\n0.0\n9\n$LIMMAX\n10\n' + X(res.w) + '\n20\n' + (h * k).toFixed(3) + '\n0\nENDSEC\n');
+    o.push('0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLTYPE\n70\n1\n0\nLTYPE\n2\nCONTINUOUS\n70\n0\n3\nSolid line\n72\n65\n73\n0\n40\n0.0\n0\nENDTAB\n' +
+      '0\nTABLE\n2\nLAYER\n70\n' + layers.length + '\n');
+    for (const [name, color] of layers) o.push('0\nLAYER\n2\n' + name + '\n70\n0\n62\n' + color + '\n6\nCONTINUOUS\n');
+    o.push('0\nENDTAB\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n');
+    function emit(data, off, closedArr, allClosed, layer) {
+      eachPoly(data, off, (s, e, i) => {
+        const closed = allClosed || (closedArr && closedArr[i]);
+        if (e - s === 2 && !closed) {
+          o.push('0\nLINE\n8\n' + layer + '\n10\n' + X(data[2 * s]) + '\n20\n' + Y(data[2 * s + 1]) + '\n30\n0.0\n11\n' +
+            X(data[2 * s + 2]) + '\n21\n' + Y(data[2 * s + 3]) + '\n31\n0.0\n');
+          return;
+        }
+        let str = '0\nPOLYLINE\n8\n' + layer + '\n66\n1\n10\n0.0\n20\n0.0\n30\n0.0\n70\n' + (closed ? 1 : 0) + '\n';
+        for (let p = s; p < e; p++) str += '0\nVERTEX\n8\n' + layer + '\n10\n' + X(data[2 * p]) + '\n20\n' + Y(data[2 * p + 1]) + '\n30\n0.0\n';
+        o.push(str + '0\nSEQEND\n8\n' + layer + '\n');
+      });
+    }
+    if (res.linesOff.length > 1) emit(res.linesData, res.linesOff, res.linesClosed, false, 'OSI');
+    if (res.fillsOff.length > 1) emit(res.fillsData, res.fillsOff, null, true, layers[layers.length - 1][0]);
+    o.push('0\nENDSEC\n0\nEOF\n');
+    return o.join('');
+  }
+
+  async function pipe(bytes, format) {
+    if (typeof CompressionStream === 'undefined') return null;
+    try {
+      const cs = new CompressionStream(format);
+      const w = cs.writable.getWriter();
+      w.write(bytes); w.close();
+      return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+    } catch (e) { return null; }
+  }
+
+  async function pdf(res) {
+    const enc = new TextEncoder();
+    const s = 72 / res.dpi, pw = (res.w * s).toFixed(2), ph = (res.h * s).toFixed(2);
+    const c = [s.toFixed(6) + ' 0 0 ' + (-s).toFixed(6) + ' 0 ' + ph + ' cm\n0 g 0 G\n'];
+    function emit(data, off, closedArr, allClosed) {
+      eachPoly(data, off, (a, e, i) => {
+        let str = r1(data[2 * a]) + ' ' + r1(data[2 * a + 1]) + ' m\n';
+        for (let p = a + 1; p < e; p++) str += r1(data[2 * p]) + ' ' + r1(data[2 * p + 1]) + ' l\n';
+        if (allClosed || (closedArr && closedArr[i])) str += 'h\n';
+        c.push(str);
+      });
+    }
+    if (res.fillsOff.length > 1) { emit(res.fillsData, res.fillsOff, null, true); c.push('f*\n'); }
+    if (res.linesOff.length > 1) {
+      c.push(r1(res.sw) + ' w 1 J 1 j\n');
+      emit(res.linesData, res.linesOff, res.linesClosed, false); c.push('S\n');
+    }
+    const raw = enc.encode(c.join(''));
+    const z = await pipe(raw, 'deflate');
+    const stream = z || raw;
+    const parts = [], offs = [];
+    let pos = 0;
+    const put = x => { const b = typeof x === 'string' ? enc.encode(x) : x; parts.push(b); pos += b.length; };
+    put('%PDF-1.4\n%âãÏÓ\n');
+    const obj = (n, body) => { offs[n] = pos; put(n + ' 0 obj\n' + body + '\nendobj\n'); };
+    obj(1, '<< /Type /Catalog /Pages 2 0 R >>');
+    obj(2, '<< /Type /Pages /Kids [3 0 R] /Count 1 >>');
+    obj(3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + pw + ' ' + ph + '] /Resources << >> /Contents 4 0 R >>');
+    offs[4] = pos;
+    put('4 0 obj\n<< /Length ' + stream.length + (z ? ' /Filter /FlateDecode' : '') + ' >>\nstream\n');
+    put(stream); put('\nendstream\nendobj\n');
+    const xref = pos;
+    let x = 'xref\n0 5\n0000000000 65535 f \n';
+    for (let n = 1; n <= 4; n++) x += String(offs[n]).padStart(10, '0') + ' 00000 n \n';
+    put(x + 'trailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF\n');
+    const out = new Uint8Array(pos);
+    let q = 0;
+    for (const b of parts) { out.set(b, q); q += b.length; }
+    return out;
+  }
+
+  let crcT = null;
+  function crc32(b) {
+    if (!crcT) {
+      crcT = new Uint32Array(256);
+      for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; crcT[n] = c >>> 0; }
+    }
+    let c = 0xFFFFFFFF;
+    for (let i = 0; i < b.length; i++) c = crcT[(c ^ b[i]) & 255] ^ (c >>> 8);
+    return (c ^ 0xFFFFFFFF) >>> 0;
+  }
+
+  // One-file ZIP (deflate when the browser can, otherwise stored).
+  async function zip(name, bytes) {
+    const z = await pipe(bytes, 'deflate-raw');
+    const body = z || bytes, method = z ? 8 : 0, nm = new TextEncoder().encode(name), crc = crc32(bytes);
+    const out = new Uint8Array(30 + nm.length + body.length + 46 + nm.length + 22), dv = new DataView(out.buffer);
+    let p = 0;
+    const head = central => {
+      dv.setUint32(p, central ? 0x02014b50 : 0x04034b50, true); p += 4;
+      if (central) { dv.setUint16(p, 20, true); p += 2; }
+      dv.setUint16(p, 20, true); dv.setUint16(p + 2, 0x0800, true); dv.setUint16(p + 4, method, true);
+      dv.setUint16(p + 6, 0, true); dv.setUint16(p + 8, 0x21, true);
+      dv.setUint32(p + 10, crc, true); dv.setUint32(p + 14, body.length, true); dv.setUint32(p + 18, bytes.length, true);
+      dv.setUint16(p + 22, nm.length, true); dv.setUint16(p + 24, 0, true); p += 26;
+      if (central) { p += 10; dv.setUint32(p, 0, true); p += 4; }
+      out.set(nm, p); p += nm.length;
+    };
+    head(false); out.set(body, p); p += body.length;
+    const cd = p; head(true);
+    const cdLen = p - cd;
+    dv.setUint32(p, 0x06054b50, true); dv.setUint16(p + 8, 1, true); dv.setUint16(p + 10, 1, true);
+    dv.setUint32(p + 12, cdLen, true); dv.setUint32(p + 16, cd, true);
+    return out;
+  }
+
+  return { svg: svg, dxf: dxf, pdf: pdf, zip: zip };
+})();
+
+(function () {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const fmtN = n => Math.round(n).toLocaleString('sk-SK');
+  const fmtD = (n, d) => n.toLocaleString('sk-SK', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const mobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+  const MAX_AREA = mobile ? 16e6 : 100e6, MAX_SIDE = mobile ? 4096 : 16000;
+  const inArtifact = !!(window.claude && window.claude.use);
+  const dlReady = inArtifact ? window.claude.use('downloads').catch(() => null) : null;
+
+  const S = { src: null, dpi: 150, hist: null, name: 'ukazka', pdf: null, isSample: true, res: null, paths: null,
+    mode: 'center', view: 'over', k: 1, ox: 0, oy: 0, run: 0, blobs: {} };
+
+  // ---------- worker (falls back to the main thread) ----------
+  const core = VecCore();
+  let worker = null;
+  const pending = new Map();
+  try {
+    const src = VecCore.toString() + ';var C=VecCore();onmessage=function(e){var m=e.data;try{var r=C.vectorize(new Uint8Array(m.bm),m.W,m.H,m.opts,' +
+      'function(t){postMessage({id:m.id,t:t})});postMessage({id:m.id,r:r},[r.fillsData.buffer,r.fillsOff.buffer,r.linesData.buffer,r.linesOff.buffer,r.linesClosed.buffer]);}' +
+      'catch(err){postMessage({id:m.id,err:String(err)})}}';
+    worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    worker.onmessage = e => {
+      const m = e.data, p = pending.get(m.id);
+      if (!p) return;
+      if (m.t) { p.say(m.t); return; }
+      pending.delete(m.id);
+      if (m.err) p.reject(new Error(m.err)); else p.resolve(m.r);
+    };
+    worker.onerror = () => { worker = null; for (const p of pending.values()) p.retry(); pending.clear(); };
+  } catch (e) { worker = null; }
+
+  function vectorize(bm, W, H, opts, say) {
+    const local = () => new Promise((res, rej) => setTimeout(() => { try { res(core.vectorize(bm, W, H, opts)); } catch (e) { rej(e); } }, 30));
+    if (!worker) return local();
+    return new Promise((resolve, reject) => {
+      const id = ++vectorize.n, copy = bm.slice(0);
+      pending.set(id, { resolve, reject, say, retry: () => local().then(resolve, reject) });
+      worker.postMessage({ id, bm: copy.buffer, W, H, opts }, [copy.buffer]);
+    });
+  }
+  vectorize.n = 0;
+
+  // ---------- status ----------
+  const busy = t => { $('busyTxt').textContent = t; $('busy').hidden = false; };
+  const idle = () => { $('busy').hidden = true; };
+  const msg = t => { $('msg').textContent = t || ''; };
+  const tick = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+
+  // ---------- input ----------
+  function sampleCanvas() {
+    const c = document.createElement('canvas'); c.width = 3000; c.height = 1920;
+    const g = c.getContext('2d');
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.scale(2, 2);
+    g.strokeStyle = g.fillStyle = '#000'; g.lineWidth = 3; g.lineCap = 'butt';
+    const L = (...p) => { g.beginPath(); g.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) g.lineTo(p[i], p[i + 1]); g.stroke(); };
+    g.strokeRect(40, 40, 1420, 880);
+    L(140, 300, 1180, 300); L(140, 420, 1180, 420);            // prívod, spiatočka
+    L(140, 300, 140, 640); L(140, 640, 520, 640); L(1180, 300, 1180, 420);
+    g.setLineDash([26, 10, 4, 10]); L(100, 360, 1260, 360); g.setLineDash([]);
+    g.beginPath(); g.arc(420, 300, 34, 0, 6.2832); g.fillStyle = '#fff'; g.fill(); g.stroke();   // čerpadlo
+    g.fillStyle = '#000'; g.beginPath(); g.moveTo(400, 276); g.lineTo(448, 300); g.lineTo(400, 324); g.closePath(); g.fill();
+    const valve = (x, y) => { g.fillStyle = '#fff'; g.fillRect(x - 24, y - 16, 48, 32); g.fillStyle = '#000';
+      L(x - 24, y - 16, x - 24, y + 16, x + 24, y - 16, x + 24, y + 16, x - 24, y - 16); L(x, y, x, y - 30); L(x - 14, y - 30, x + 14, y - 30); };
+    valve(640, 300); valve(860, 420);
+    g.beginPath(); g.ellipse(520, 720, 60, 80, 0, 0, 6.2832); g.stroke(); L(520, 640, 520, 644);   // expanzná nádoba
+    g.beginPath(); g.moveTo(1010, 420); g.lineTo(990, 412); g.lineTo(990, 428); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(760, 300); g.lineTo(740, 292); g.lineTo(740, 308); g.closePath(); g.fill();
+    L(600, 720, 700, 660, 820, 660);
+    g.lineWidth = 1.6; L(140, 520, 1180, 520); L(140, 505, 140, 535); L(1180, 505, 1180, 535); L(130, 530, 150, 510); L(1170, 530, 1190, 510);
+    g.font = '30px "Courier New", monospace'; g.fillText('5200', 620, 508);
+    g.fillText('EXP1', 712, 650); g.fillText('DN32', 900, 288); g.fillText('TČ', 398, 250); g.fillText('SV', 846, 380); g.fillText('GK', 626, 258);
+    g.font = '24px "Courier New", monospace'; g.fillText('PRÍVOD', 160, 286); g.fillText('SPIATOČKA', 160, 448);
+    g.lineWidth = 3; g.strokeRect(1040, 760, 420, 160); L(1040, 814, 1460, 814); L(1250, 814, 1250, 920);
+    g.font = 'bold 34px Arial, sans-serif'; g.fillText('UKÁŽKA', 1060, 800);
+    g.font = '22px "Courier New", monospace'; g.fillText('M 1:50', 1060, 850); g.fillText('E 4.02', 1270, 850); g.fillText('STROJOVŇA', 1060, 896);
+    // scan dirt: specks and pinholes
+    let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    for (let i = 0; i < 400; i++) { g.fillStyle = '#000'; g.fillRect(120 + rnd() * 2760, 120 + rnd() * 1680, 1 + (rnd() * 2 | 0), 1 + (rnd() * 2 | 0)); }
+    g.fillStyle = '#fff'; for (let i = 0; i < 700; i++) g.fillRect(260 + rnd() * 2120, 595 + (rnd() < .5 ? 0 : 240) + rnd() * 8, 1, 1);
+    return c;
+  }
+
+  function setSource(canvas, dpi, name, isSample) {
+    S.src = canvas; S.dpi = dpi; S.name = name; S.isSample = !!isSample;
+    const g = canvas.getContext('2d', { willReadFrequently: true }), w = canvas.width, h = canvas.height;
+    const hist = new Uint32Array(256);
+    for (let y = 0; y < h; y += 64) {
+      const d = g.getImageData(0, y, w, Math.min(8, h - y)).data;
+      for (let i = 0; i < d.length; i += 4) hist[(d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8]++;
+    }
+    S.hist = hist;
+    fit(); process();
+  }
+
+  async function renderPdfPage(n) {
+    busy('Načítavam stranu ' + n + '…'); await tick();
+    const page = await S.pdf.getPage(n), want = +$('dpi').value;
+    const v1 = page.getViewport({ scale: 1 });
+    const sc = Math.min(want / 72, Math.sqrt(MAX_AREA / (v1.width * v1.height)), MAX_SIDE / Math.max(v1.width, v1.height));
+    const vp = page.getViewport({ scale: sc });
+    const c = document.createElement('canvas'); c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    await page.render({ canvasContext: g, viewport: vp, background: '#fff' }).promise;
+    const eff = Math.round(sc * 72), note = $('dpiNote');
+    note.hidden = eff >= want - 1;
+    note.textContent = 'Výkres je veľký, spracujem ho pri ' + eff + ' dpi, aby sa zmestil do pamäte prehliadača.';
+    setSource(c, sc * 72, S.base, false);
+  }
+
+  async function openFile(file) {
+    if (!file) return;
+    msg('');
+    S.base = file.name.replace(/\.[^.]+$/, '') || 'vykres';
+    $('fname').textContent = file.name;
+    try {
+      if (/pdf$/i.test(file.type) || /\.pdf$/i.test(file.name)) {
+        if (!window.pdfjsLib) throw new Error('Čítačku PDF sa nepodarilo načítať (bez internetu?). Obrázky PNG/JPG fungujú aj tak.');
+        busy('Otváram PDF…'); await tick();
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        S.pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+        const sel = $('page'); sel.innerHTML = '';
+        for (let i = 1; i <= S.pdf.numPages; i++) { const o = document.createElement('option'); o.value = i; o.textContent = i + ' / ' + S.pdf.numPages; sel.appendChild(o); }
+        $('pageRow').hidden = S.pdf.numPages < 2;
+        await renderPdfPage(1);
+      } else {
+        busy('Načítavam obrázok…'); await tick();
+        S.pdf = null; $('pageRow').hidden = true; $('dpiNote').hidden = true;
+        const bmp = await createImageBitmap(file);
+        const sc = Math.min(1, Math.sqrt(MAX_AREA / (bmp.width * bmp.height)), MAX_SIDE / Math.max(bmp.width, bmp.height));
+        const c = document.createElement('canvas'); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+        const g = c.getContext('2d', { willReadFrequently: true });
+        g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(bmp, 0, 0, c.width, c.height);
+        setSource(c, +$('dpi').value * sc, S.base, false);
+      }
+    } catch (e) { idle(); msg('Súbor sa nepodarilo otvoriť: ' + (e && e.message || e)); }
+  }
+
+  // ---------- processing ----------
+  async function process() {
+    if (!S.src) return;
+    const run = ++S.run;
+    busy('Pripravujem obraz…'); await tick();
+    if (run !== S.run) return;
+    const c = S.src, w = c.width, h = c.height, W = w + 2, H = h + 2;
+    const tv = +$('thr').value, thr = tv === 0 ? core.otsu(S.hist) : tv;
+    $('thrVal').textContent = tv === 0 ? 'auto (' + thr + ')' : String(thr);
+    let bm;
+    try {
+      bm = new Uint8Array(W * H);
+      const g = c.getContext('2d', { willReadFrequently: true });
+      for (let y0 = 0; y0 < h; y0 += 512) {
+        const rows = Math.min(512, h - y0), d = g.getImageData(0, y0, w, rows).data;
+        for (let y = 0; y < rows; y++) {
+          let o = (y0 + y + 1) * W + 1, i = y * w * 4;
+          for (let x = 0; x < w; x++, i += 4, o++) if (((d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8) <= thr) bm[o] = 1;
+        }
+      }
+    } catch (e) { idle(); msg('Nedostatok pamäte. Skús nižšie rozlíšenie.'); return; }
+    const opts = { mode: S.mode, turd: +$('turd').value, eps: +$('eps').value, keepFills: $('keepFills').checked, prune: $('prune').checked };
+    let res;
+    try { res = await vectorize(bm, W, H, opts, t => { if (run === S.run) busy(t); }); }
+    catch (e) { if (run === S.run) { idle(); msg('Vektorizácia zlyhala: ' + e.message); } return; }
+    if (run !== S.run) return;
+    res.dpi = S.dpi;
+    S.res = res; S.blobs = {};
+    const f = new Path2D(), l = new Path2D();
+    let d = res.fillsData, o = res.fillsOff;
+    for (let i = 0; i + 1 < o.length; i++) { let s = o[i]; f.moveTo(d[2 * s], d[2 * s + 1]); for (s++; s < o[i + 1]; s++) f.lineTo(d[2 * s], d[2 * s + 1]); f.closePath(); }
+    d = res.linesData; o = res.linesOff;
+    for (let i = 0; i + 1 < o.length; i++) { let s = o[i]; l.moveTo(d[2 * s], d[2 * s + 1]); for (s++; s < o[i + 1]; s++) l.lineTo(d[2 * s], d[2 * s + 1]); if (res.linesClosed[i]) l.closePath(); }
+    S.paths = { f, l };
+    idle(); stats(); draw();
+    document.querySelectorAll('[data-fmt]').forEach(b => { b.disabled = false; });
+    ['szPdf', 'szSvg', 'szDxf'].forEach(id => { $(id).textContent = id === 'szDxf' && inArtifact ? '.zip' : 'stiahnuť'; });
+  }
+
+  const ISO = [['A0', 841, 1189], ['A1', 594, 841], ['A2', 420, 594], ['A3', 297, 420], ['A4', 210, 297]];
+  function stats() {
+    const r = S.res, mmW = r.w * 25.4 / r.dpi, mmH = r.h * 25.4 / r.dpi, a = Math.min(mmW, mmH), b = Math.max(mmW, mmH);
+    const iso = ISO.find(s => Math.abs(a - s[1]) / s[1] < .05 && Math.abs(b - s[2]) / s[2] < .05);
+    const nL = r.linesOff.length - 1, nF = r.fillsOff.length - 1, pts = (r.linesData.length + r.fillsData.length) / 2;
+    const rows = [['Formát', fmtN(mmW) + ' × ' + fmtN(mmH) + ' mm' + (iso ? ' (≈ ' + iso[0] + ')' : '')],
+      ['Raster', fmtN(r.w) + ' × ' + fmtN(r.h) + ' px'], ['Rozlíšenie', Math.round(r.dpi) + ' dpi']];
+    if (S.mode === 'center') rows.push(['Osové čiary', fmtN(nL)], ['Plné plochy', fmtN(nF)], ['Dĺžka čiar', fmtD(r.length * 25.4 / r.dpi / 1000, 1) + ' m'],
+      ['Hrúbka čiary', '≈ ' + fmtD(r.sw * 25.4 / r.dpi, 2) + ' mm']);
+    else rows.push(['Obrysy', fmtN(nF)]);
+    rows.push(['Vrcholy', fmtN(pts)], ['Odstránené škvrny', fmtN(r.removed)], ['Čas výpočtu', fmtD(r.ms / 1000, 1) + ' s']);
+    const dl = $('stats'); dl.innerHTML = '';
+    for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; dl.append(dt, dd); }
+    $('tag').textContent = S.isSample ? 'Ukážkový výkres' : S.name;
+    scaleHint();
+  }
+  function scaleHint() {
+    const n = Math.max(1, +$('scale').value || 1), r = S.res;
+    if (!r) return;
+    const mmW = r.w * 25.4 / r.dpi * n;
+    $('scaleHint').textContent = n === 1 ? 'DXF je v milimetroch papiera. Zadaj mierku z rohovej pečiatky a dostaneš skutočné rozmery.'
+      : 'DXF bude v skutočných milimetroch: šírka listu = ' + fmtD(mmW / 1000, 2) + ' m.';
+  }
+
+  // ---------- viewer ----------
+  const cv = $('view'), ctx = cv.getContext('2d');
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  function fit() {
+    if (!S.src) return;
+    const r = cv.getBoundingClientRect(), pad = 28;
+    S.k = Math.min((r.width - pad * 2) / S.src.width, (r.height - pad * 2 - 30) / S.src.height);
+    if (!(S.k > 0)) S.k = 0.1;
+    S.ox = (r.width - S.src.width * S.k) / 2; S.oy = (r.height - S.src.height * S.k) / 2 + 12;
+    draw();
+  }
+  function draw() {
+    const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    const cw = Math.max(1, Math.round(r.width * dpr)), ch = Math.max(1, Math.round(r.height * dpr));
+    if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cw, ch);
+    if (!S.src) return;
+    ctx.setTransform(S.k * dpr, 0, 0, S.k * dpr, S.ox * dpr, S.oy * dpr);
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, S.src.width, S.src.height);
+    const P = S.paths, v = P ? S.view : 'scan';
+    if (v !== 'vec') {
+      ctx.globalAlpha = v === 'over' ? 0.32 : 1;
+      ctx.imageSmoothingEnabled = S.k < 3;
+      ctx.drawImage(S.src, 0, 0);
+      ctx.globalAlpha = 1;
+    }
+    if (P && v !== 'scan') {
+      const over = v === 'over', col = over ? css('--trace') || '#C81E8A' : '#000';
+      ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      if (over && S.mode === 'outline') { ctx.lineWidth = 1.2 / S.k; ctx.stroke(P.f); }
+      else { if (over) ctx.globalAlpha = 0.75; ctx.fill(P.f, 'evenodd'); ctx.globalAlpha = 1; }
+      ctx.lineWidth = over ? Math.max(1.3 / S.k, S.res.sw * 0.35) : S.res.sw;
+      ctx.stroke(P.l);
+    }
+    // scale bar
+    const mmPerPx = 25.4 / S.dpi / S.k, nice = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+    const mm = nice.find(n => n / mmPerPx >= 70) || 1000;
+    $('scaleTxt').textContent = mm + ' mm';
+    $('scaleLine').style.width = Math.round(mm / mmPerPx) + 'px';
+  }
+  function zoomAt(x, y, f) {
+    const k = Math.min(60, Math.max(0.01, S.k * f)); f = k / S.k;
+    S.ox = x - (x - S.ox) * f; S.oy = y - (y - S.oy) * f; S.k = k; draw();
+  }
+  cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+  const ptr = new Map(); let pinch = 0;
+  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); ptr.set(e.pointerId, [e.clientX, e.clientY]); cv.classList.add('drag'); pinch = 0; });
+  cv.addEventListener('pointermove', e => {
+    const p = ptr.get(e.pointerId); if (!p) return;
+    if (ptr.size === 1) { S.ox += e.clientX - p[0]; S.oy += e.clientY - p[1]; draw(); }
+    ptr.set(e.pointerId, [e.clientX, e.clientY]);
+    if (ptr.size === 2) {
+      const [a, b] = [...ptr.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]), r = cv.getBoundingClientRect();
+      if (pinch) zoomAt((a[0] + b[0]) / 2 - r.left, (a[1] + b[1]) / 2 - r.top, d / pinch);
+      pinch = d;
+    }
+  });
+  const up = e => { ptr.delete(e.pointerId); pinch = 0; if (!ptr.size) cv.classList.remove('drag'); };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  const center = f => { const r = cv.getBoundingClientRect(); zoomAt(r.width / 2, r.height / 2, f); };
+  $('zIn').onclick = () => center(1.5); $('zOut').onclick = () => center(1 / 1.5); $('zFit').onclick = fit;
+  new ResizeObserver(() => draw()).observe($('stage'));
+  if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
+  new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  // ---------- downloads ----------
+  async function build(fmt) {
+    const r = S.res, enc = new TextEncoder(), base = (S.isSample ? 'ukazka' : S.name) + (S.mode === 'center' ? '_osi' : '_obrys');
+    if (fmt === 'svg') return { name: base + '.svg', blob: new Blob([VecExport.svg(r)], { type: 'image/svg+xml' }) };
+    if (fmt === 'pdf') return { name: base + '.pdf', blob: new Blob([await VecExport.pdf(r)], { type: 'application/pdf' }) };
+    const n = Math.max(1, +$('scale').value || 1), txt = VecExport.dxf(r, n);
+    if (!inArtifact) return { name: base + '.dxf', blob: new Blob([txt], { type: 'application/dxf' }) };
+    return { name: base + '_dxf.zip', blob: new Blob([await VecExport.zip(base + '.dxf', enc.encode(txt))], { type: 'application/zip' }) };
+  }
+  async function download(fmt, btn) {
+    if (!S.res) return;
+    btn.disabled = true; msg('Pripravujem ' + fmt.toUpperCase() + '…'); await tick();
+    try {
+      const { name, blob } = await build(fmt);
+      const size = blob.size > 1e6 ? fmtD(blob.size / 1e6, 1) + ' MB' : Math.max(1, Math.round(blob.size / 1e3)) + ' kB';
+      btn.querySelector('small').textContent = size;
+      if (inArtifact) {
+        const dl = await dlReady;
+        if (!dl) { msg('Sťahovanie tu nie je dostupné. Otvor stránku priamo v claude.ai alebo ju spusti na vlastnom webe.'); return; }
+        try { await dl.save({ filename: name, data: blob }); msg('Uložené: ' + name + (fmt === 'dxf' ? '. Rozbaľ .zip a otvor DXF v CAD-e.' : '')); }
+        catch (e) {
+          msg(e && e.code === 'declined' ? 'Uloženie zrušené.' : e && e.code === 'rate_limited' ? 'Chvíľu počkaj a skús to znova.'
+            : 'Súbor sa nepodarilo uložiť (' + (e && e.code || 'chyba') + ').');
+        }
+      } else {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 20000);
+        msg('Stiahnuté: ' + name + ' (' + size + ')');
+      }
+    } catch (e) { msg('Export zlyhal: ' + (e && e.message || e)); }
+    finally { btn.disabled = false; }
+  }
+  document.querySelectorAll('[data-fmt]').forEach(b => b.addEventListener('click', () => download(b.dataset.fmt, b)));
+
+  // ---------- controls ----------
+  let timer = 0;
+  const later = () => { clearTimeout(timer); timer = setTimeout(process, 350); };
+  function modeUI() {
+    const c = S.mode === 'center';
+    $('modeHint').textContent = c ? 'Každá čiara je jedna polyčiara v osi. Vhodné na ďalšiu prácu v CAD-e.'
+      : 'Verná kópia tvaru: každá čiara je uzavretý obrys. Vhodné na tlač a ako podklad.';
+    $('fillsRow').hidden = !c; $('pruneRow').hidden = !c;
+    document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)));
+  }
+  document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { S.mode = b.dataset.mode; modeUI(); process(); }));
+  document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
+    S.view = b.dataset.view;
+    document.querySelectorAll('[data-view]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    draw();
+  }));
+  $('thr').oninput = () => { const v = +$('thr').value; $('thrVal').textContent = v === 0 ? 'auto' : String(v); later(); };
+  $('turd').oninput = () => { $('turdVal').textContent = $('turd').value + ' px'; later(); };
+  $('eps').oninput = () => { $('epsVal').textContent = fmtD(+$('eps').value, 1) + ' px'; later(); };
+  $('keepFills').onchange = process; $('prune').onchange = process;
+  $('scale').oninput = scaleHint;
+  $('dpi').onchange = () => {
+    if (S.pdf) renderPdfPage(+$('page').value || 1).catch(e => { idle(); msg('Stranu sa nepodarilo načítať: ' + e.message); });
+    else if (!S.isSample && S.src) { S.dpi = +$('dpi').value; process(); }
+  };
+  $('page').onchange = () => renderPdfPage(+$('page').value).catch(e => { idle(); msg('Stranu sa nepodarilo načítať: ' + e.message); });
+  $('pick').onclick = () => $('file').click();
+  $('file').onchange = e => { openFile(e.target.files[0]); e.target.value = ''; };
+  const drop = $('drop');
+  ['dragenter', 'dragover'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  document.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) openFile(f); });
+
+  modeUI();
+  setSource(sampleCanvas(), 300, 'ukazka', true);
+})();
+</script>
+</body>
+</html>
