@@ -5,7 +5,7 @@
 /* Layout: a drafting desk. Narrow control rail on the left, the sheet fills the rest. */
 :root {
   --bg: #E9EDF1; --panel: #F7F9FB; --line: #C9D1D9; --fg: #14202B; --muted: #566575;
-  --accent: #0A63C2; --accent-fg: #FFFFFF; --trace: #C81E8A; --desk: #D3DAE1; --warn: #9A5B00;
+  --accent: #0A63C2; --accent-fg: #FFFFFF; --trace: #C81E8A; --desk: #D3DAE1; --warn: #9A5B00; --ok: #1E7A45; --ocr: #0A7F8F;
   --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
   --cond: "IBM Plex Sans Condensed", "Arial Narrow", "Segoe UI", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
@@ -13,32 +13,35 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #0E141A; --panel: #161E26; --line: #2B3743; --fg: #E4EBF1; --muted: #93A2B2;
-    --accent: #58A6FF; --accent-fg: #06121F; --trace: #FF62C6; --desk: #090D11; --warn: #F0B45A; color-scheme: dark;
+    --accent: #58A6FF; --accent-fg: #06121F; --trace: #FF62C6; --desk: #090D11; --warn: #F0B45A; --ok: #5FD08E; --ocr: #3FD0E0; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0E141A; --panel: #161E26; --line: #2B3743; --fg: #E4EBF1; --muted: #93A2B2;
-  --accent: #58A6FF; --accent-fg: #06121F; --trace: #FF62C6; --desk: #090D11; --warn: #F0B45A; color-scheme: dark;
+  --accent: #58A6FF; --accent-fg: #06121F; --trace: #FF62C6; --desk: #090D11; --warn: #F0B45A; --ok: #5FD08E; --ocr: #3FD0E0; color-scheme: dark;
 }
 html, body { height: 100%; }
 body { background: var(--bg); color: var(--fg); font: 14px/1.45 var(--sans); }
 * { box-sizing: border-box; }
-.app { height: 100%; display: grid; grid-template-columns: 330px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+.app { height: 100%; display: grid; grid-template-columns: 340px minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
 header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; padding-block: 10px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-bottom: 1px solid var(--line); }
 h1 { margin: 0; font: 600 20px/1.2 var(--cond); letter-spacing: .02em; text-transform: uppercase; }
 header p { margin: 0; color: var(--muted); font-size: 13px; }
 aside { overflow-y: auto; padding-block: 14px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px;
-  border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; gap: 16px; }
+  border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; gap: 18px; }
 fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; min-width: 0; }
-legend { padding: 0; margin-bottom: 7px; font: 600 12px/1 var(--cond); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+fieldset + fieldset { border-top: 1px solid var(--line); padding-top: 14px; }
+legend { padding: 0; margin-bottom: 7px; font: 600 12px/1 var(--cond); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); float: left; width: 100%; }
+legend + * { clear: both; }
 label { display: block; }
 .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .row > span:first-child { min-width: 0; }
 .val { font: 500 12px var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 input[type=range] { width: 100%; accent-color: var(--accent); margin: 2px 0 0; }
-select, input[type=number] { font: 500 13px var(--mono); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 7px; }
+select, input[type=number], input[type=text] { font: 500 13px var(--mono); color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 7px; }
 input[type=number] { width: 84px; }
+input[type=text] { width: 100%; font-family: var(--sans); }
 .check { display: flex; gap: 8px; align-items: flex-start; }
 .check input { margin-top: 3px; accent-color: var(--accent); }
 .hint { color: var(--muted); font-size: 12px; margin: 0; }
@@ -46,7 +49,10 @@ button { font: 500 13px var(--sans); color: var(--fg); background: var(--bg); bo
 button:hover:not(:disabled) { border-color: var(--accent); }
 button:disabled { opacity: .45; cursor: default; }
 button.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+button[aria-pressed=true].toggle { background: var(--fg); color: var(--bg); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.btns > button { flex: 1 1 auto; }
 .drop { border: 1.5px dashed var(--line); border-radius: 6px; padding: 12px; text-align: center; background: var(--bg); }
 .drop.over { border-color: var(--accent); }
 .drop button { width: 100%; }
@@ -55,6 +61,10 @@ button.primary { background: var(--accent); color: var(--accent-fg); border-colo
 .seg button { border: 0; border-radius: 0; background: var(--bg); padding: 7px 6px; }
 .seg button + button { border-left: 1px solid var(--line); }
 .seg button[aria-pressed=true] { background: var(--fg); color: var(--bg); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.chips li { font-size: 12px; line-height: 1.3; padding: 4px 8px; border-radius: 3px; background: var(--bg); border: 1px solid var(--line); }
+.chips li b { font-weight: 600; }
+.chips li.warn { border-color: var(--warn); color: var(--warn); }
 .dl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .dl button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 4px; }
 .dl b { font: 600 15px var(--cond); letter-spacing: .05em; }
@@ -62,39 +72,50 @@ button.primary { background: var(--accent); color: var(--accent-fg); border-colo
 dl.stats { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; font-size: 12px; }
 dl.stats dt { color: var(--muted); }
 dl.stats dd { margin: 0; font-family: var(--mono); font-variant-numeric: tabular-nums; text-align: right; }
+.progress { height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden; }
+.progress i { display: block; height: 100%; width: 0; background: var(--ocr); transition: width .2s; }
+.symform { display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px solid var(--accent); border-radius: 4px; background: var(--bg); }
+.symform canvas { align-self: flex-start; border: 1px solid var(--line); background: #fff; image-rendering: pixelated; max-width: 100%; }
+ul.syms { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+ul.syms li { display: grid; grid-template-columns: 12px minmax(0, 1fr) auto auto; align-items: center; gap: 8px; font-size: 13px; }
+ul.syms li i { width: 12px; height: 12px; border-radius: 2px; }
+ul.syms li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+ul.syms li b { font: 600 13px var(--mono); font-variant-numeric: tabular-nums; }
+ul.syms li button { padding: 1px 7px; line-height: 1.2; }
 main { position: relative; min-width: 0; min-height: 0; background: var(--desk); overflow: hidden; }
 canvas#view { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; display: block; }
 canvas#view.drag { cursor: grabbing; }
+canvas#view.pick { cursor: crosshair; }
 .bar { position: absolute; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .bar.top { top: 10px; left: 10px; right: max(10px, env(safe-area-inset-right, 0px)); justify-content: space-between; pointer-events: none; }
 .bar.top > * { pointer-events: auto; }
-.bar .seg, .zoom { background: var(--panel); box-shadow: 0 1px 4px rgb(0 0 0 / .18); }
+.bar .grp { display: flex; gap: 8px; flex-wrap: wrap; }
+.bar .seg, .zoom, .bar .toggle { background: var(--panel); box-shadow: 0 1px 4px rgb(0 0 0 / .18); }
 .zoom { display: flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
 .zoom button { border: 0; border-radius: 0; background: var(--panel); min-width: 36px; }
 .zoom button + button { border-left: 1px solid var(--line); }
 .scale { position: absolute; left: 12px; bottom: 12px; padding: 5px 8px 6px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; font: 500 11px var(--mono); }
 .scale i { display: block; height: 5px; margin-top: 3px; border: 1.5px solid var(--fg); border-top: 0; }
 .tag { position: absolute; right: 12px; bottom: 12px; padding: 5px 9px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; font-size: 12px; color: var(--muted); max-width: 60%; }
+.banner { position: absolute; left: 50%; top: 56px; transform: translateX(-50%); padding: 7px 12px; background: var(--accent); color: var(--accent-fg); border-radius: 4px; font-weight: 500; font-size: 13px; box-shadow: 0 2px 8px rgb(0 0 0 / .25); max-width: 90%; text-align: center; }
 .busy { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 12px 18px; background: var(--panel); border: 1px solid var(--line);
   border-radius: 6px; font-weight: 500; box-shadow: 0 4px 18px rgb(0 0 0 / .25); display: flex; gap: 10px; align-items: center; max-width: 80%; }
 .busy::before { content: ""; width: 14px; height: 14px; flex: none; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .busy::before { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .busy::before { animation: none; } .progress i { transition: none; } }
 .note { color: var(--warn); font-size: 12px; margin: 0; }
 @media (max-width: 760px) {
   html, body { height: auto; }
   .app { display: flex; flex-direction: column; height: auto; }
-  main { order: 1; }
-  aside { order: 2; }
-  aside { border-right: 0; border-top: 1px solid var(--line); padding-right: max(16px, env(safe-area-inset-right, 0px)); overflow: visible; }
-  main { height: min(68svh, 560px); }
+  main { order: 1; height: min(68svh, 560px); }
+  aside { order: 2; border-right: 0; border-top: 1px solid var(--line); padding-right: max(16px, env(safe-area-inset-right, 0px)); overflow: visible; }
 }
 </style>
 
 <div class="app">
   <header>
     <h1>Vektorizér výkresov</h1>
-    <p>Sken v PDF → vektorové PDF, SVG a DXF. Všetko sa počíta v tvojom prehliadači, súbor nikam neodchádza.</p>
+    <p>Sken v PDF → vektorové PDF, SVG a DXF s textom a značkami. Všetko sa počíta v tvojom prehliadači, súbor nikam neodchádza.</p>
   </header>
 
   <aside>
@@ -107,8 +128,15 @@ canvas#view.drag { cursor: grabbing; }
       </div>
       <label class="row" id="pageRow" hidden><span>Strana</span><select id="page"></select></label>
       <label class="row"><span>Rozlíšenie spracovania</span>
-        <select id="dpi"><option>150</option><option>200</option><option selected>300</option><option>400</option></select></label>
+        <select id="dpi"><option value="auto" selected>auto</option><option>150</option><option>200</option><option>300</option><option>400</option><option>600</option></select></label>
       <p class="note" id="dpiNote" hidden></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Automatické nastavenie</legend>
+      <ul class="chips" id="autoChips"><li>Čaká sa na výkres…</li></ul>
+      <label class="check"><input type="checkbox" id="autoOn" checked><span>Nastaviť automaticky po načítaní súboru</span></label>
+      <button type="button" id="autoBtn">Nastaviť znova podľa skenu</button>
     </fieldset>
 
     <fieldset>
@@ -118,12 +146,14 @@ canvas#view.drag { cursor: grabbing; }
         <button type="button" data-mode="outline" aria-pressed="false">Obrys</button>
       </div>
       <p class="hint" id="modeHint"></p>
-      <label class="check" id="fillsRow"><input type="checkbox" id="keepFills" checked><span>Plné plochy (šípky, hrubé písmo) nechať ako obrys</span></label>
+      <label class="check"><input type="checkbox" id="straight" checked><span>Narovnať šikmý sken a dorovnať vodorovné a zvislé čiary</span></label>
+      <label class="check" id="fillsRow"><input type="checkbox" id="keepFills" checked><span>Plné plochy (šípky, hrubé písmo) nechať ako vyplnený obrys</span></label>
       <label class="check" id="pruneRow"><input type="checkbox" id="prune" checked><span>Odstrániť krátke výbežky na čiarach</span></label>
     </fieldset>
 
     <fieldset>
       <legend>Čistenie</legend>
+      <label class="check"><input type="checkbox" id="flat"><span>Vyrovnať nerovnomerné pozadie (fotka, tieň)</span></label>
       <label><span class="row"><span>Prah čiernej</span><span class="val" id="thrVal">auto</span></span>
         <input type="range" id="thr" min="0" max="250" step="5" value="0" aria-describedby="thrHelp"></label>
       <p class="hint" id="thrHelp">Úplne vľavo = automaticky. Vyššia hodnota zachytí aj bledé čiary.</p>
@@ -131,6 +161,37 @@ canvas#view.drag { cursor: grabbing; }
         <input type="range" id="turd" min="0" max="40" step="1" value="6"></label>
       <label><span class="row"><span>Zjednodušenie čiar</span><span class="val" id="epsVal">1,0 px</span></span>
         <input type="range" id="eps" min="0.4" max="3" step="0.1" value="1"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Text (OCR, slovenčina a angličtina)</legend>
+      <label class="check"><input type="checkbox" id="ocrAuto" checked><span>Rozpoznať text po načítaní súboru</span></label>
+      <label class="check"><input type="checkbox" id="ocrVert"><span>Aj zvislý text (približne 2× dlhšie)</span></label>
+      <div class="seg" role="group" aria-label="Rozpoznaný text vo výstupe">
+        <button type="button" data-tmode="keep" aria-pressed="true">Ponechať tvar písma</button>
+        <button type="button" data-tmode="replace" aria-pressed="false">Nahradiť písmom</button>
+      </div>
+      <p class="hint" id="tmodeHint"></p>
+      <div class="btns"><button type="button" id="ocrBtn">Rozpoznať text</button><button type="button" id="txtBtn" disabled>Stiahnuť TXT</button></div>
+      <div class="progress" id="ocrProg" hidden><i></i></div>
+      <p class="hint" id="ocrMsg" role="status" aria-live="polite"></p>
+    </fieldset>
+
+    <fieldset>
+      <legend>Značky</legend>
+      <p class="hint">Označ jednu značku (napr. ventil v legende) a apka nájde na výkrese všetky rovnaké, aj otočené. V DXF z nich budú bloky.</p>
+      <button type="button" id="symPick" class="toggle" aria-pressed="false">Označiť značku na výkrese</button>
+      <div class="symform" id="symForm" hidden>
+        <canvas id="symPrev" width="120" height="80"></canvas>
+        <label><span class="hint">Názov značky</span><input type="text" id="symName" maxlength="60"></label>
+        <div class="btns"><button type="button" class="primary" id="symFind">Nájsť všetky</button><button type="button" id="symCancel">Zrušiť</button></div>
+      </div>
+      <label><span class="row"><span>Požadovaná podobnosť</span><span class="val" id="simVal">72 %</span></span>
+        <input type="range" id="sim" min="50" max="95" step="1" value="72"></label>
+      <ul class="syms" id="symList"></ul>
+      <label class="check"><input type="checkbox" id="symBlocks" checked><span>V DXF nahradiť nájdené značky blokmi</span></label>
+      <button type="button" id="csvBtn" disabled>Stiahnuť výkaz značiek (CSV)</button>
+      <p class="hint" id="symMsg" role="status" aria-live="polite"></p>
     </fieldset>
 
     <fieldset>
@@ -154,10 +215,13 @@ canvas#view.drag { cursor: grabbing; }
   <main id="stage">
     <canvas id="view" aria-label="Náhľad výkresu"></canvas>
     <div class="bar top">
-      <div class="seg" role="group" aria-label="Zobrazenie">
-        <button type="button" data-view="scan" aria-pressed="false">Sken</button>
-        <button type="button" data-view="over" aria-pressed="true">Prekrytie</button>
-        <button type="button" data-view="vec" aria-pressed="false">Vektor</button>
+      <div class="grp">
+        <div class="seg" role="group" aria-label="Zobrazenie">
+          <button type="button" data-view="scan" aria-pressed="false">Sken</button>
+          <button type="button" data-view="over" aria-pressed="true">Prekrytie</button>
+          <button type="button" data-view="vec" aria-pressed="false">Vektor</button>
+        </div>
+        <button type="button" class="toggle" id="showText" aria-pressed="true" disabled>Text</button>
       </div>
       <div class="zoom">
         <button type="button" id="zOut" aria-label="Oddialiť">−</button>
@@ -165,14 +229,14 @@ canvas#view.drag { cursor: grabbing; }
         <button type="button" id="zIn" aria-label="Priblížiť">+</button>
       </div>
     </div>
+    <div class="banner" id="pickBanner" hidden>Potiahni obdĺžnik okolo jednej značky. Esc zruší.</div>
     <div class="scale" id="scaleBar"><span id="scaleTxt">10 mm</span><i id="scaleLine"></i></div>
     <div class="tag" id="tag"></div>
     <div class="busy" id="busy" hidden><span id="busyTxt">Pracujem…</span></div>
   </main>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="vendor/pdfjs/pdf.min.js"></script>
 <script>
 /*CORE*/
 /*EXPORT*/
@@ -181,43 +245,54 @@ canvas#view.drag { cursor: grabbing; }
   const $ = id => document.getElementById(id);
   const fmtN = n => Math.round(n).toLocaleString('sk-SK');
   const fmtD = (n, d) => n.toLocaleString('sk-SK', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const abs = p => new URL(p, document.baseURI).href;
   const mobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
   const MAX_AREA = mobile ? 16e6 : 100e6, MAX_SIDE = mobile ? 4096 : 16000;
   const inArtifact = !!(window.claude && window.claude.use);
   const dlReady = inArtifact ? window.claude.use('downloads').catch(() => null) : null;
+  const COLORS = ['#E8590C', '#2F9E44', '#7048E8', '#1C7ED6', '#C2255C', '#0CA678', '#F08C00', '#5C940D'];
 
-  const S = { src: null, dpi: 150, hist: null, name: 'ukazka', pdf: null, isSample: true, res: null, paths: null,
-    mode: 'center', view: 'over', k: 1, ox: 0, oy: 0, run: 0, blobs: {} };
+  const S = { src: null, dpi: 300, hist: null, name: 'ukazka', base: 'ukazka', pdf: null, isSample: true, res: null, paths: null,
+    mode: 'center', view: 'over', tmode: 'keep', k: 1, ox: 0, oy: 0, run: 0, bm: null, W: 0, H: 0,
+    ocr: null, ocrRun: 0, syms: [], picking: false, sel: null, pendingBox: null, manualScale: false, fresh: false, auto: null, nativeDpi: 0, vectorPdf: false };
 
   // ---------- worker (falls back to the main thread) ----------
   const core = VecCore();
   let worker = null;
   const pending = new Map();
+  let jobN = 0;
   try {
-    const src = VecCore.toString() + ';var C=VecCore();onmessage=function(e){var m=e.data;try{var r=C.vectorize(new Uint8Array(m.bm),m.W,m.H,m.opts,' +
-      'function(t){postMessage({id:m.id,t:t})});postMessage({id:m.id,r:r},[r.fillsData.buffer,r.fillsOff.buffer,r.linesData.buffer,r.linesOff.buffer,r.linesClosed.buffer]);}' +
-      'catch(err){postMessage({id:m.id,err:String(err)})}}';
+    const src = VecCore.toString() + ';var C=VecCore();onmessage=function(e){var m=e.data;var say=function(t){postMessage({id:m.id,t:t})};try{' +
+      'var bm=new Uint8Array(m.bm);' +
+      'if(m.op==="analyze"){postMessage({id:m.id,r:C.analyze(bm,m.W,m.H)});return;}' +
+      'if(m.op==="sym"){postMessage({id:m.id,r:C.findSymbol(bm,m.W,m.H,m.box,m.opts,say)});return;}' +
+      'var r=C.vectorize(bm,m.W,m.H,m.opts,say);postMessage({id:m.id,r:r},[r.fillsData.buffer,r.fillsOff.buffer,r.linesData.buffer,r.linesOff.buffer,r.linesClosed.buffer]);}' +
+      'catch(err){postMessage({id:m.id,err:String(err&&err.stack||err)})}}';
     worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
     worker.onmessage = e => {
       const m = e.data, p = pending.get(m.id);
       if (!p) return;
-      if (m.t) { p.say(m.t); return; }
+      if (m.t) { p.say && p.say(m.t); return; }
       pending.delete(m.id);
       if (m.err) p.reject(new Error(m.err)); else p.resolve(m.r);
     };
     worker.onerror = () => { worker = null; for (const p of pending.values()) p.retry(); pending.clear(); };
   } catch (e) { worker = null; }
 
-  function vectorize(bm, W, H, opts, say) {
-    const local = () => new Promise((res, rej) => setTimeout(() => { try { res(core.vectorize(bm, W, H, opts)); } catch (e) { rej(e); } }, 30));
+  function job(op, bm, W, H, extra, say) {
+    const local = () => new Promise((res, rej) => setTimeout(() => {
+      try {
+        const b = bm.slice(0);
+        res(op === 'analyze' ? core.analyze(b, W, H) : op === 'sym' ? core.findSymbol(b, W, H, extra.box, extra.opts, say) : core.vectorize(b, W, H, extra.opts, say));
+      } catch (e) { rej(e); }
+    }, 30));
     if (!worker) return local();
     return new Promise((resolve, reject) => {
-      const id = ++vectorize.n, copy = bm.slice(0);
+      const id = ++jobN, copy = bm.slice(0);
       pending.set(id, { resolve, reject, say, retry: () => local().then(resolve, reject) });
-      worker.postMessage({ id, bm: copy.buffer, W, H, opts }, [copy.buffer]);
+      worker.postMessage(Object.assign({ id, op, bm: copy.buffer, W, H }, extra), [copy.buffer]);
     });
   }
-  vectorize.n = 0;
 
   // ---------- status ----------
   const busy = t => { $('busyTxt').textContent = t; $('busy').hidden = false; };
@@ -229,7 +304,7 @@ canvas#view.drag { cursor: grabbing; }
   function sampleCanvas() {
     const c = document.createElement('canvas'); c.width = 3000; c.height = 1920;
     const g = c.getContext('2d');
-    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.scale(2, 2);
+    g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.translate(1500, 960); g.rotate(0.006); g.translate(-1500, -960); g.scale(2, 2);
     g.strokeStyle = g.fillStyle = '#000'; g.lineWidth = 3; g.lineCap = 'butt';
     const L = (...p) => { g.beginPath(); g.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) g.lineTo(p[i], p[i + 1]); g.stroke(); };
     g.strokeRect(40, 40, 1420, 880);
@@ -240,10 +315,10 @@ canvas#view.drag { cursor: grabbing; }
     g.fillStyle = '#000'; g.beginPath(); g.moveTo(400, 276); g.lineTo(448, 300); g.lineTo(400, 324); g.closePath(); g.fill();
     const valve = (x, y) => { g.fillStyle = '#fff'; g.fillRect(x - 24, y - 16, 48, 32); g.fillStyle = '#000';
       L(x - 24, y - 16, x - 24, y + 16, x + 24, y - 16, x + 24, y + 16, x - 24, y - 16); L(x, y, x, y - 30); L(x - 14, y - 30, x + 14, y - 30); };
-    valve(640, 300); valve(860, 420);
+    valve(640, 300); valve(860, 420); valve(1180, 360 + 0);
     g.beginPath(); g.ellipse(520, 720, 60, 80, 0, 0, 6.2832); g.stroke(); L(520, 640, 520, 644);   // expanzná nádoba
-    g.beginPath(); g.moveTo(1010, 420); g.lineTo(990, 412); g.lineTo(990, 428); g.closePath(); g.fill();
-    g.beginPath(); g.moveTo(760, 300); g.lineTo(740, 292); g.lineTo(740, 308); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(1010, 420); g.lineTo(990, 410); g.lineTo(990, 430); g.closePath(); g.fill();
+    g.beginPath(); g.moveTo(760, 300); g.lineTo(740, 290); g.lineTo(740, 310); g.closePath(); g.fill();
     L(600, 720, 700, 660, 820, 660);
     g.lineWidth = 1.6; L(140, 520, 1180, 520); L(140, 505, 140, 535); L(1180, 505, 1180, 535); L(130, 530, 150, 510); L(1170, 530, 1190, 510);
     g.font = '30px "Courier New", monospace'; g.fillText('5200', 620, 508);
@@ -252,12 +327,18 @@ canvas#view.drag { cursor: grabbing; }
     g.lineWidth = 3; g.strokeRect(1040, 760, 420, 160); L(1040, 814, 1460, 814); L(1250, 814, 1250, 920);
     g.font = 'bold 34px Arial, sans-serif'; g.fillText('UKÁŽKA', 1060, 800);
     g.font = '22px "Courier New", monospace'; g.fillText('M 1:50', 1060, 850); g.fillText('E 4.02', 1270, 850); g.fillText('STROJOVŇA', 1060, 896);
-    // scan dirt: specks and pinholes
     let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     g.setTransform(1, 0, 0, 1, 0, 0);
     for (let i = 0; i < 400; i++) { g.fillStyle = '#000'; g.fillRect(120 + rnd() * 2760, 120 + rnd() * 1680, 1 + (rnd() * 2 | 0), 1 + (rnd() * 2 | 0)); }
-    g.fillStyle = '#fff'; for (let i = 0; i < 700; i++) g.fillRect(260 + rnd() * 2120, 595 + (rnd() < .5 ? 0 : 240) + rnd() * 8, 1, 1);
+    g.fillStyle = '#fff'; for (let i = 0; i < 700; i++) g.fillRect(260 + rnd() * 2120, 600 + (rnd() < .5 ? 0 : 240) + rnd() * 8, 1, 1);
     return c;
+  }
+
+  function resetForNewSource() {
+    S.ocr = null; S.ocrRun++; S.syms = []; S.sel = null; S.pendingBox = null; S.manualScale = false; S.fresh = true;
+    $('scale').value = 1; $('symForm').hidden = true; setPicking(false);
+    $('ocrMsg').textContent = ''; $('ocrProg').hidden = true; $('txtBtn').disabled = true; $('showText').disabled = true;
+    renderSyms();
   }
 
   function setSource(canvas, dpi, name, isSample) {
@@ -269,14 +350,97 @@ canvas#view.drag { cursor: grabbing; }
       for (let i = 0; i < d.length; i += 4) hist[(d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8]++;
     }
     S.hist = hist;
-    fit(); process();
+    fit();
+    if ($('autoOn').checked) autoSetup(); else process();
+  }
+
+  // Looks at the PDF page: resolution of an embedded scan, or whether it is already vector.
+  async function inspectPage(page, v1) {
+    let best = null, text = 0, paths = 0, images = 0;
+    try {
+      const ops = await page.getOperatorList(), O = pdfjsLib.OPS;
+      let m = [1, 0, 0, 1, 0, 0];
+      const stack = [];
+      for (let i = 0; i < ops.fnArray.length; i++) {
+        const fn = ops.fnArray[i];
+        if (fn === O.save) stack.push(m.slice());
+        else if (fn === O.restore) m = stack.pop() || [1, 0, 0, 1, 0, 0];
+        else if (fn === O.transform) {
+          const t = ops.argsArray[i];
+          m = [t[0] * m[0] + t[1] * m[2], t[0] * m[1] + t[1] * m[3], t[2] * m[0] + t[3] * m[2], t[2] * m[1] + t[3] * m[3],
+            t[4] * m[0] + t[5] * m[2] + m[4], t[4] * m[1] + t[5] * m[3] + m[5]];
+        } else if (fn === O.paintImageXObject) {
+          const a = ops.argsArray[i], w = a[1], h = a[2];
+          images++;
+          const ptW = Math.hypot(m[0], m[1]);                       // drawn width of the image in points
+          if (typeof w === 'number' && (!best || w * h > best.w * best.h)) best = { id: a[0], w, h, dpi: ptW > 0 ? w / (ptW / 72) : 0, rot: Math.abs(m[1]) > Math.abs(m[0]) };
+        } else if (fn === O.showText || fn === O.showSpacedText) text++;
+        else if (fn === O.constructPath) paths++;
+      }
+    } catch (e) { /* inspection is optional */ }
+    const pageAspect = v1.width / v1.height;
+    const fills = best && !best.rot && Math.abs(best.w / best.h - pageAspect) / pageAspect < 0.03;
+    return { dpi: best ? best.dpi : 0, vector: !best && (text > 20 || paths > 50), img: fills && images <= 3 ? best : null };
+  }
+
+  // Scanned page: take the embedded image itself (full resolution) and shrink it with a box filter.
+  async function imageFromPdf(page, img, scale) {
+    const data = await new Promise((res, rej) => {
+      const t = setTimeout(() => rej(new Error('timeout')), 30000);
+      try { page.objs.get(img.id, d => { clearTimeout(t); res(d); }); } catch (e) { clearTimeout(t); rej(e); }
+    });
+    if (!data || !data.data || !(data.kind >= 1 && data.kind <= 3)) return null;
+    const iw = data.width, ih = data.height, src = data.data, kind = data.kind;
+    const ow = Math.max(1, Math.round(iw * scale)), oh = Math.max(1, Math.round(ih * scale));
+    const c = document.createElement('canvas'); c.width = ow; c.height = oh;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    const col = new Int32Array(iw), cnt = new Float32Array(ow);
+    for (let x = 0; x < iw; x++) { col[x] = Math.min(ow - 1, Math.floor(x * ow / iw)); cnt[col[x]]++; }
+    const rowBytes = kind === 1 ? (iw + 7) >> 3 : kind === 2 ? iw * 3 : iw * 4;
+    const acc = new Float32Array(ow), CH = 256;
+    let y = 0;
+    for (let Y0 = 0; Y0 < oh; Y0 += CH) {
+      const rows = Math.min(CH, oh - Y0), out = g.createImageData(ow, rows), d = out.data;
+      for (let r = 0; r < rows; r++) {
+        const Y = Y0 + r, yEnd = Math.min(ih, Math.max(y + 1, Math.round((Y + 1) * ih / oh)));
+        acc.fill(0);
+        const n = yEnd - y;
+        for (; y < yEnd; y++) {
+          const o = y * rowBytes;
+          if (kind === 1) for (let x = 0; x < iw; x++) acc[col[x]] += (src[o + (x >> 3)] >> (7 - (x & 7))) & 1 ? 255 : 0;
+          else if (kind === 2) for (let x = 0; x < iw; x++) { const q = o + 3 * x; acc[col[x]] += (src[q] * 77 + src[q + 1] * 150 + src[q + 2] * 29) >> 8; }
+          else for (let x = 0; x < iw; x++) { const q = o + 4 * x; acc[col[x]] += (src[q] * 77 + src[q + 1] * 150 + src[q + 2] * 29) >> 8; }
+        }
+        for (let X = 0; X < ow; X++) { const v = acc[X] / (cnt[X] * n), p = (r * ow + X) * 4; d[p] = d[p + 1] = d[p + 2] = v; d[p + 3] = 255; }
+      }
+      g.putImageData(out, 0, Y0);
+    }
+    return c;
   }
 
   async function renderPdfPage(n) {
     busy('Načítavam stranu ' + n + '…'); await tick();
-    const page = await S.pdf.getPage(n), want = +$('dpi').value;
-    const v1 = page.getViewport({ scale: 1 });
+    resetForNewSource();
+    const page = await S.pdf.getPage(n), v1 = page.getViewport({ scale: 1 });
+    const info = await inspectPage(page, v1);
+    S.nativeDpi = info.dpi; S.vectorPdf = info.vector;
+    const sel = $('dpi').value;
+    let want = sel === 'auto' ? (info.dpi ? Math.min(400, Math.max(150, Math.round(info.dpi))) : 300) : +sel;
     const sc = Math.min(want / 72, Math.sqrt(MAX_AREA / (v1.width * v1.height)), MAX_SIDE / Math.max(v1.width, v1.height));
+    if (info.img) {
+      try {
+        busy('Načítavam sken v plnom rozlíšení…'); await tick();
+        const native = info.dpi, s = Math.min(1, sc * 72 / native);
+        const c = await imageFromPdf(page, info.img, s);
+        if (c) {
+          const eff = Math.round(native * s), note = $('dpiNote');
+          note.hidden = eff >= want - 1;
+          note.textContent = 'Výkres je veľký, spracujem ho pri ' + eff + ' dpi, aby sa zmestil do pamäte prehliadača.';
+          setSource(c, native * c.width / info.img.w, S.base, false);
+          return;
+        }
+      } catch (e) { /* fall back to rendering the page */ }
+    }
     const vp = page.getViewport({ scale: sc });
     const c = document.createElement('canvas'); c.width = Math.floor(vp.width); c.height = Math.floor(vp.height);
     const g = c.getContext('2d', { willReadFrequently: true });
@@ -295,55 +459,161 @@ canvas#view.drag { cursor: grabbing; }
     $('fname').textContent = file.name;
     try {
       if (/pdf$/i.test(file.type) || /\.pdf$/i.test(file.name)) {
-        if (!window.pdfjsLib) throw new Error('Čítačku PDF sa nepodarilo načítať (bez internetu?). Obrázky PNG/JPG fungujú aj tak.');
+        if (!window.pdfjsLib) throw new Error('Čítačku PDF sa nepodarilo načítať. Obrázky PNG/JPG fungujú aj tak.');
         busy('Otváram PDF…'); await tick();
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        S.pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = abs('vendor/pdfjs/pdf.worker.min.js');
+        S.pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer(), isOffscreenCanvasSupported: false, canvasMaxAreaInBytes: 2147483647 }).promise;
         const sel = $('page'); sel.innerHTML = '';
         for (let i = 1; i <= S.pdf.numPages; i++) { const o = document.createElement('option'); o.value = i; o.textContent = i + ' / ' + S.pdf.numPages; sel.appendChild(o); }
         $('pageRow').hidden = S.pdf.numPages < 2;
         await renderPdfPage(1);
       } else {
         busy('Načítavam obrázok…'); await tick();
-        S.pdf = null; $('pageRow').hidden = true; $('dpiNote').hidden = true;
+        resetForNewSource();
+        S.pdf = null; S.nativeDpi = 0; S.vectorPdf = false; $('pageRow').hidden = true; $('dpiNote').hidden = true;
         const bmp = await createImageBitmap(file);
         const sc = Math.min(1, Math.sqrt(MAX_AREA / (bmp.width * bmp.height)), MAX_SIDE / Math.max(bmp.width, bmp.height));
         const c = document.createElement('canvas'); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
         const g = c.getContext('2d', { willReadFrequently: true });
         g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(bmp, 0, 0, c.width, c.height);
-        setSource(c, +$('dpi').value * sc, S.base, false);
+        const sel = $('dpi').value;
+        setSource(c, (sel === 'auto' ? 300 : +sel) * sc, S.base, false);
       }
     } catch (e) { idle(); msg('Súbor sa nepodarilo otvoriť: ' + (e && e.message || e)); }
   }
 
-  // ---------- processing ----------
-  async function process() {
-    if (!S.src) return;
-    const run = ++S.run;
-    busy('Pripravujem obraz…'); await tick();
-    if (run !== S.run) return;
+  // ---------- binarization ----------
+  // Uneven background (photos): local background from a coarse max-filtered map.
+  function backgroundMap(c) {
+    const cw = Math.max(16, Math.round(c.width / 16)), ch = Math.max(16, Math.round(c.height / 16));
+    const t = document.createElement('canvas'); t.width = cw; t.height = ch;
+    const g = t.getContext('2d', { willReadFrequently: true });
+    g.imageSmoothingQuality = 'high'; g.drawImage(c, 0, 0, cw, ch);
+    const d = g.getImageData(0, 0, cw, ch).data, L = new Float32Array(cw * ch);
+    for (let i = 0; i < L.length; i++) L[i] = (d[4 * i] * 77 + d[4 * i + 1] * 150 + d[4 * i + 2] * 29) >> 8;
+    const R = 3, M = new Float32Array(L.length), B = new Float32Array(L.length);
+    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+      let m = 0;
+      for (let yy = Math.max(0, y - R); yy <= Math.min(ch - 1, y + R); yy++) for (let xx = Math.max(0, x - R); xx <= Math.min(cw - 1, x + R); xx++) m = Math.max(m, L[yy * cw + xx]);
+      M[y * cw + x] = m;
+    }
+    for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+      let s = 0, n = 0;
+      for (let yy = Math.max(0, y - 2); yy <= Math.min(ch - 1, y + 2); yy++) for (let xx = Math.max(0, x - 2); xx <= Math.min(cw - 1, x + 2); xx++) { s += M[yy * cw + xx]; n++; }
+      B[y * cw + x] = s / n;
+    }
+    const sorted = Float32Array.from(B).sort();
+    const lo = sorted[Math.floor(sorted.length * 0.1)], hi = sorted[Math.floor(sorted.length * 0.95)];
+    return { B, cw, ch, sx: cw / c.width, sy: ch / c.height, range: hi - lo };
+  }
+
+  function binarize(thrOverride) {
     const c = S.src, w = c.width, h = c.height, W = w + 2, H = h + 2;
-    const tv = +$('thr').value, thr = tv === 0 ? core.otsu(S.hist) : tv;
-    $('thrVal').textContent = tv === 0 ? 'auto (' + thr + ')' : String(thr);
-    let bm;
-    try {
-      bm = new Uint8Array(W * H);
-      const g = c.getContext('2d', { willReadFrequently: true });
-      for (let y0 = 0; y0 < h; y0 += 512) {
-        const rows = Math.min(512, h - y0), d = g.getImageData(0, y0, w, rows).data;
-        for (let y = 0; y < rows; y++) {
-          let o = (y0 + y + 1) * W + 1, i = y * w * 4;
+    const tv = thrOverride != null ? thrOverride : +$('thr').value;
+    const flat = $('flat').checked;
+    const thr = tv === 0 ? core.otsu(S.hist) : tv;
+    const bm = new Uint8Array(W * H);
+    const g = c.getContext('2d', { willReadFrequently: true });
+    const bg = flat ? (S.bgMap || (S.bgMap = backgroundMap(c))) : null;
+    const ratio = tv === 0 ? 0.72 : tv / 255;
+    for (let y0 = 0; y0 < h; y0 += 512) {
+      const rows = Math.min(512, h - y0), d = g.getImageData(0, y0, w, rows).data;
+      for (let y = 0; y < rows; y++) {
+        let o = (y0 + y + 1) * W + 1, i = y * w * 4;
+        if (!bg) {
           for (let x = 0; x < w; x++, i += 4, o++) if (((d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8) <= thr) bm[o] = 1;
+        } else {
+          const by = Math.min(bg.ch - 1, Math.max(0, (y0 + y) * bg.sy - 0.5)), y1 = Math.floor(by), fy = by - y1, y2 = Math.min(bg.ch - 1, y1 + 1);
+          for (let x = 0; x < w; x++, i += 4, o++) {
+            const bx = Math.min(bg.cw - 1, Math.max(0, x * bg.sx - 0.5)), x1 = Math.floor(bx), fx = bx - x1, x2 = Math.min(bg.cw - 1, x1 + 1);
+            const b = (bg.B[y1 * bg.cw + x1] * (1 - fx) + bg.B[y1 * bg.cw + x2] * fx) * (1 - fy) + (bg.B[y2 * bg.cw + x1] * (1 - fx) + bg.B[y2 * bg.cw + x2] * fx) * fy;
+            if (((d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8) <= b * ratio) bm[o] = 1;
+          }
         }
       }
-    } catch (e) { idle(); msg('Nedostatok pamäte. Skús nižšie rozlíšenie.'); return; }
-    const opts = { mode: S.mode, turd: +$('turd').value, eps: +$('eps').value, keepFills: $('keepFills').checked, prune: $('prune').checked };
+    }
+    return { bm, W, H, thr, flat };
+  }
+
+  // ---------- automatic setup ----------
+  function chip(text, warn) { return { text, warn: !!warn }; }
+  function renderChips(list) {
+    const ul = $('autoChips'); ul.innerHTML = '';
+    for (const c of list) {
+      const li = document.createElement('li'); if (c.warn) li.className = 'warn';
+      const parts = c.text.split('**');
+      parts.forEach((p, i) => { if (i % 2) { const b = document.createElement('b'); b.textContent = p; li.appendChild(b); } else if (p) li.appendChild(document.createTextNode(p)); });
+      ul.appendChild(li);
+    }
+  }
+
+  async function autoSetup() {
+    if (!S.src) return;
+    const run = ++S.run;
+    busy('Rozoberám sken…'); await tick();
+    S.bgMap = null;
+    const bgm = backgroundMap(S.src);
+    S.bgMap = bgm;
+    const uneven = bgm.range > 40;
+    $('flat').checked = uneven;
+    $('thr').value = 0;
+    let b;
+    try { b = binarize(0); } catch (e) { idle(); msg('Nedostatok pamäte. Skús nižšie rozlíšenie.'); return; }
+    let st;
+    try { st = await job('analyze', b.bm, b.W, b.H, {}, null); } catch (e) { if (run === S.run) { idle(); msg('Rozbor zlyhal: ' + e.message); } return; }
+    if (run !== S.run) return;
+    const chips = [];
+    const mm = v => fmtD(v * 25.4 / S.dpi, 2);
+    if (S.pdf) {
+      if (S.vectorPdf) chips.push(chip('PDF už obsahuje vektory, výsledok bude zo zobrazeného rastra', true));
+      else if (S.nativeDpi) chips.push(chip('Sken **' + Math.round(S.nativeDpi) + ' dpi**, spracované pri ' + Math.round(S.dpi) + ' dpi'));
+    } else if (!S.isSample) chips.push(chip('Obrázok: rozmery v mm sú odhad (' + Math.round(S.dpi) + ' dpi)', true));
+    if (uneven) chips.push(chip('Nerovnomerné pozadie: **vyrovnávam**'));
+    const textDoc = st.letterFrac > 0.55 && st.lineFrac < 0.25;
+    const sketch = st.lineFrac < 0.06 && !textDoc;
+    let kind;
+    if (textDoc) { S.mode = 'outline'; kind = 'Text alebo tabuľka → **obrys**'; }
+    else if (sketch) { S.mode = 'center'; kind = 'Náčrt bez rovných čiar → **osové čiary**'; }
+    else { S.mode = 'center'; kind = 'Technický výkres → **osové čiary**'; }
+    chips.push(chip(kind));
+    chips.push(chip('Hrúbka čiary **' + mm(st.sw) + ' mm**'));
+    let turd = Math.max(2, Math.min(10, Math.round(st.sw * st.sw * 0.6)));
+    if (st.specksPerMp > 300) { turd = Math.min(16, Math.round(turd * 1.6)); chips.push(chip('Veľa šumu: škvrny do **' + turd + ' px**')); }
+    else chips.push(chip('Škvrny do **' + turd + ' px**'));
+    $('turd').value = turd; $('turdVal').textContent = turd + ' px';
+    let eps = Math.max(0.6, Math.min(2.2, S.dpi / 300)) + (uneven || sketch ? 0.3 : 0);
+    eps = Math.round(eps * 10) / 10;
+    $('eps').value = eps; $('epsVal').textContent = fmtD(eps, 1) + ' px';
+    $('keepFills').checked = true;
+    $('prune').checked = true;
+    $('straight').checked = !sketch;
+    if (sketch) chips.push(chip('Bez narovnávania čiar'));
+    if (st.solidFrac > 0.02) chips.push(chip('Plné plochy: **' + Math.round(st.solidFrac * 100) + ' %** atramentu'));
+    S.auto = { chips, stats: st };
+    renderChips(chips);
+    modeUI();
+    await process(run);
+  }
+
+  // ---------- processing ----------
+  async function process(runIn) {
+    if (!S.src) return;
+    const run = runIn || ++S.run;
+    busy('Pripravujem obraz…'); await tick();
+    if (run !== S.run) return;
+    let b;
+    try { b = binarize(); } catch (e) { idle(); msg('Nedostatok pamäte. Skús nižšie rozlíšenie.'); return; }
+    $('thrVal').textContent = +$('thr').value === 0 ? (b.flat ? 'auto (podľa pozadia)' : 'auto (' + b.thr + ')') : String(b.thr);
+    S.bm = b.bm; S.W = b.W; S.H = b.H;
+    const straight = $('straight').checked;
+    const opts = { mode: S.mode, turd: +$('turd').value, eps: +$('eps').value, keepFills: $('keepFills').checked, prune: $('prune').checked,
+      deskew: straight, ortho: straight, textBoxes: S.tmode === 'replace' && S.ocr ? S.ocr.words.filter(w => w.conf >= 70).map(w => ({ x: w.x, y: w.y, w: w.w, h: w.h })) : null };
     let res;
-    try { res = await vectorize(bm, W, H, opts, t => { if (run === S.run) busy(t); }); }
+    try { res = await job('vec', b.bm, b.W, b.H, { opts }, t => { if (run === S.run) busy(t); }); }
     catch (e) { if (run === S.run) { idle(); msg('Vektorizácia zlyhala: ' + e.message); } return; }
     if (run !== S.run) return;
     res.dpi = S.dpi;
-    S.res = res; S.blobs = {};
+    S.res = res;
     const f = new Path2D(), l = new Path2D();
     let d = res.fillsData, o = res.fillsOff;
     for (let i = 0; i + 1 < o.length; i++) { let s = o[i]; f.moveTo(d[2 * s], d[2 * s + 1]); for (s++; s < o[i + 1]; s++) f.lineTo(d[2 * s], d[2 * s + 1]); f.closePath(); }
@@ -353,6 +623,10 @@ canvas#view.drag { cursor: grabbing; }
     idle(); stats(); draw();
     document.querySelectorAll('[data-fmt]').forEach(b => { b.disabled = false; });
     ['szPdf', 'szSvg', 'szDxf'].forEach(id => { $(id).textContent = id === 'szDxf' && inArtifact ? '.zip' : 'stiahnuť'; });
+    if (S.fresh) {
+      S.fresh = false;
+      if ($('ocrAuto').checked) runOCR();
+    }
   }
 
   const ISO = [['A0', 841, 1189], ['A1', 594, 841], ['A2', 420, 594], ['A3', 297, 420], ['A4', 210, 297]];
@@ -365,6 +639,8 @@ canvas#view.drag { cursor: grabbing; }
     if (S.mode === 'center') rows.push(['Osové čiary', fmtN(nL)], ['Plné plochy', fmtN(nF)], ['Dĺžka čiar', fmtD(r.length * 25.4 / r.dpi / 1000, 1) + ' m'],
       ['Hrúbka čiary', '≈ ' + fmtD(r.sw * 25.4 / r.dpi, 2) + ' mm']);
     else rows.push(['Obrysy', fmtN(nF)]);
+    if ($('straight').checked) rows.push(['Natočenie skenu', r.skew ? fmtD(r.skew, 2) + '° (narovnané)' : 'žiadne']);
+    if (S.ocr) rows.push(['Rozpoznané slová', fmtN(S.ocr.words.length)]);
     rows.push(['Vrcholy', fmtN(pts)], ['Odstránené škvrny', fmtN(r.removed)], ['Čas výpočtu', fmtD(r.ms / 1000, 1) + ' s']);
     const dl = $('stats'); dl.innerHTML = '';
     for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; dl.append(dt, dd); }
@@ -376,7 +652,331 @@ canvas#view.drag { cursor: grabbing; }
     if (!r) return;
     const mmW = r.w * 25.4 / r.dpi * n;
     $('scaleHint').textContent = n === 1 ? 'DXF je v milimetroch papiera. Zadaj mierku z rohovej pečiatky a dostaneš skutočné rozmery.'
-      : 'DXF bude v skutočných milimetroch: šírka listu = ' + fmtD(mmW / 1000, 2) + ' m.';
+      : 'DXF bude v skutočných milimetroch: šírka listu = ' + fmtD(mmW / 1000, 2) + ' m.' + (S.scaleFrom ? ' ' + S.scaleFrom : '');
+  }
+
+  // ---------- coordinates: scan pixels <-> straightened vector space ----------
+  function toVec(x, y) {
+    const r = S.res; if (!r || !r.skew) return [x, y];
+    const a = -r.skew * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), dx = x - r.cx, dy = y - r.cy;
+    return [r.cx + dx * c - dy * s, r.cy + dx * s + dy * c];
+  }
+  function toScan(x, y) {
+    const r = S.res; if (!r || !r.skew) return [x, y];
+    const a = r.skew * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), dx = x - r.cx, dy = y - r.cy;
+    return [r.cx + dx * c - dy * s, r.cy + dx * s + dy * c];
+  }
+  function applyScanTransform(ctx) {
+    const r = S.res;
+    if (r && r.skew) { ctx.translate(r.cx, r.cy); ctx.rotate(-r.skew * Math.PI / 180); ctx.translate(-r.cx, -r.cy); }
+  }
+
+  // ---------- OCR ----------
+  let tessLoad = null;
+  function loadTesseract() {
+    if (window.Tesseract) return Promise.resolve();
+    if (tessLoad) return tessLoad;
+    tessLoad = new Promise((res, rej) => {
+      const s = document.createElement('script'); s.src = 'vendor/tesseract/tesseract.min.js';
+      s.onload = () => res(); s.onerror = () => { tessLoad = null; rej(new Error('Knižnicu na rozpoznávanie textu sa nepodarilo načítať.')); };
+      document.head.appendChild(s);
+    });
+    return tessLoad;
+  }
+  let pool = null;
+  async function getPool(n, say) {
+    if (pool && pool.length >= n) return pool.slice(0, n);
+    pool = pool || [];
+    while (pool.length < n) {
+      say('Pripravujem rozpoznávanie textu (' + (pool.length + 1) + '/' + n + ')…');
+      const w = await Tesseract.createWorker('slk+eng', 1, {
+        workerPath: abs('vendor/tesseract/worker.min.js'), corePath: abs('vendor/tesseract/core/'),
+        langPath: abs('vendor/tesseract/lang'), cacheMethod: 'none', gzip: true
+      });
+      await w.setParameters({ tessedit_pageseg_mode: '11', preserve_interword_spaces: '1' });
+      pool.push(w);
+    }
+    return pool.slice(0, n);
+  }
+
+  function tileCanvas(bm, W, x0, y0, tw, th, f, rotate) {
+    // ink from the cleaned bitmap, f = output scale (<= 1)
+    const ow = Math.max(1, Math.round(tw * f)), oh = Math.max(1, Math.round(th * f));
+    const c = document.createElement('canvas');
+    c.width = rotate ? oh : ow; c.height = rotate ? ow : oh;
+    const g = c.getContext('2d'), img = g.createImageData(c.width, c.height), d = img.data;
+    const inv = 1 / f, step = Math.max(1, Math.round(inv));
+    let ink = 0;
+    for (let y = 0; y < oh; y++) for (let x = 0; x < ow; x++) {
+      const sx = Math.floor(x0 + x * inv), sy = Math.floor(y0 + y * inv);
+      let s = 0, n = 0;
+      for (let yy = 0; yy < step; yy++) { const o = (sy + yy + 1) * W + sx + 1; for (let xx = 0; xx < step; xx++) { s += bm[o + xx] || 0; n++; } }
+      const v = 255 - Math.round(255 * s / n);
+      if (v < 128) ink++;
+      const X = rotate ? oh - 1 - y : x, Y = rotate ? x : y, p = (Y * c.width + X) * 4;
+      d[p] = d[p + 1] = d[p + 2] = v; d[p + 3] = 255;
+    }
+    g.putImageData(img, 0, 0);
+    return { c, ink: ink / (ow * oh), ow, oh };
+  }
+
+  function parseTSV(tsv) {
+    const out = [];
+    for (const line of (tsv || '').split('\n')) {
+      const c = line.split('\t');
+      if (c.length < 12 || c[0] !== '5') continue;
+      const conf = +c[10], text = c.slice(11).join(' ').trim();
+      if (!text || conf < 0) continue;
+      out.push({ x: +c[6], y: +c[7], w: +c[8], h: +c[9], conf, text, line: c[2] + '.' + c[3] + '.' + c[4] });
+    }
+    return out;
+  }
+
+  async function runOCR() {
+    if (!S.bm || !S.res) return;
+    const run = ++S.ocrRun, bm = S.bm, W = S.W, H = S.H, w = W - 2, h = H - 2;
+    const say = t => { if (run === S.ocrRun) $('ocrMsg').textContent = t; };
+    const prog = $('ocrProg'), bar = prog.firstElementChild;
+    $('ocrBtn').disabled = true;
+    try {
+      say('Načítavam rozpoznávanie textu…');
+      await loadTesseract();
+      const n = Math.max(1, Math.min(4, (navigator.hardwareConcurrency || 2) - 1));
+      const workers = await getPool(n, say);
+      if (run !== S.ocrRun) return;
+      const f = Math.min(1, 300 / S.dpi), T = Math.round(1800 / f), OV = Math.round(220 / f);
+      const vert = $('ocrVert').checked, tiles = [];
+      for (let y = 0; y < h; y += T - OV) for (let x = 0; x < w; x += T - OV) {
+        const tw = Math.min(T, w - x), th = Math.min(T, h - y);
+        if (tw < 40 || th < 40) continue;
+        tiles.push({ x, y, tw, th, rot: false });
+        if (vert) tiles.push({ x, y, tw, th, rot: true });
+      }
+      prog.hidden = false; bar.style.width = '0%';
+      let done = 0, idx = 0;
+      const words = [];
+      const one = async wk => {
+        while (idx < tiles.length) {
+          if (run !== S.ocrRun) return;
+          const t = tiles[idx++];
+          const tc = tileCanvas(bm, W, t.x, t.y, t.tw, t.th, f, t.rot);
+          if (tc.ink > 0.002) {
+            await wk.setParameters({ user_defined_dpi: String(Math.round(S.dpi * f)) });
+            const r = await wk.recognize(tc.c, {}, { text: false, blocks: false, hocr: false, tsv: true });
+            for (const wd of parseTSV(r.data.tsv)) {
+              let x, y, ww, hh;
+              if (!t.rot) { x = t.x + wd.x / f; y = t.y + wd.y / f; ww = wd.w / f; hh = wd.h / f; }
+              else { x = t.x + wd.y / f; y = t.y + (tc.oh - wd.x - wd.w) / f; ww = wd.h / f; hh = wd.w / f; }
+              // keep words whose centre lies in this tile's own area (overlaps are shared)
+              const cx = x + ww / 2, cy = y + hh / 2, m = OV / 2;
+              if ((t.x > 0 && cx < t.x + m) || (t.y > 0 && cy < t.y + m) || (t.x + t.tw < w && cx > t.x + t.tw - m) || (t.y + t.th < h && cy > t.y + t.th - m)) continue;
+              words.push({ x, y, w: ww, h: hh, str: wd.text, conf: wd.conf, rot: t.rot ? 90 : 0, line: (t.rot ? 'v' : 'h') + t.x + '.' + t.y + '.' + wd.line });
+            }
+          }
+          done++;
+          bar.style.width = Math.round(100 * done / tiles.length) + '%';
+          say('Rozpoznávam text: ' + done + ' / ' + tiles.length + ' častí výkresu');
+        }
+      };
+      await Promise.all(workers.map(one));
+      if (run !== S.ocrRun) return;
+      S.ocr = { words: cleanWords(words), f };
+      prog.hidden = true;
+      const sc = detectScale(S.ocr.words);
+      const nW = S.ocr.words.length;
+      say('Rozpoznaných ' + fmtN(nW) + ' slov' + (sc ? '. Mierka v pečiatke: 1:' + sc : '') + '.');
+      $('txtBtn').disabled = !nW; $('showText').disabled = !nW;
+      if (sc && !S.manualScale) {
+        $('scale').value = sc; S.scaleFrom = 'Mierka 1:' + sc + ' je prevzatá z rohovej pečiatky.';
+        if (S.auto) { S.auto.chips.push(chip('Mierka z pečiatky **1:' + sc + '**')); renderChips(S.auto.chips); }
+      }
+      if (S.tmode === 'replace') await process(); else { stats(); draw(); }
+    } catch (e) {
+      prog.hidden = true;
+      say('Rozpoznávanie textu zlyhalo: ' + (e && e.message || e));
+    } finally { if (run === S.ocrRun) $('ocrBtn').disabled = false; }
+  }
+
+  function cleanWords(list) {
+    const ok = list.filter(w => /[\p{L}\p{N}]/u.test(w.str) && w.conf >= 55 && w.h >= 6 && w.w >= 3 &&
+      !(w.rot === 90 && w.str.length < 2 && w.conf < 85) && !(w.str.length === 1 && w.conf < 75));
+    ok.sort((a, b) => b.conf * Math.sqrt(b.str.length) - a.conf * Math.sqrt(a.str.length));
+    const kept = [];
+    for (const w of ok) {
+      let clash = false;
+      for (const k of kept) {
+        const ix = Math.max(0, Math.min(w.x + w.w, k.x + k.w) - Math.max(w.x, k.x)), iy = Math.max(0, Math.min(w.y + w.h, k.y + k.h) - Math.max(w.y, k.y));
+        if (ix * iy > 0.4 * Math.min(w.w * w.h, k.w * k.h)) { clash = true; break; }
+      }
+      if (!clash) kept.push(w);
+    }
+    return kept;
+  }
+
+  // Reading lines: words grouped by their OCR line, in reading order.
+  function textLines(words) {
+    const by = new Map();
+    for (const w of words) { const a = by.get(w.line); if (a) a.push(w); else by.set(w.line, [w]); }
+    const lines = [...by.values()].map(a => {
+      const rot = a[0].rot;
+      a.sort((p, q) => rot ? (q.y + q.h) - (p.y + p.h) : p.x - q.x);
+      const x = Math.min(...a.map(w => w.x)), y = Math.min(...a.map(w => w.y));
+      const x2 = Math.max(...a.map(w => w.x + w.w)), y2 = Math.max(...a.map(w => w.y + w.h));
+      return { rot, x, y, x2, y2, text: a.map(w => w.str).join(' ') };
+    });
+    lines.sort((p, q) => p.rot - q.rot || Math.round(p.y / 30) - Math.round(q.y / 30) || p.x - q.x);
+    return lines;
+  }
+
+  function detectScale(words) {
+    const lines = textLines(words.filter(w => !w.rot)), w = S.res.w, h = S.res.h, found = [];
+    for (const l of lines) {
+      const re = /(?:^|[^\d.,])1\s*[:;]\s*(\d{1,4})(?![\d.,])/g; let m;
+      while ((m = re.exec(l.text))) {
+        const v = +m[1];
+        if (v < 1 || v > 5000) continue;
+        let score = (l.x / w) + (l.y / h);                                   // title block sits bottom right
+        if (/m(ierka)?\.?\s*$/i.test(l.text.slice(0, m.index + 1).trim()) || /mierka|scale|merítko/i.test(l.text)) score += 2;
+        for (const o of lines) if (o !== l && /mierka|scale|merítko/i.test(o.text) && Math.abs(o.y - l.y) < 1.5 * (l.y2 - l.y) && o.x < l.x) score += 1.5;
+        found.push({ v, score });
+      }
+    }
+    found.sort((a, b) => b.score - a.score);
+    return found.length ? found[0].v : 0;
+  }
+
+  // Text geometry for export (baseline start, length, cap height) in vector space.
+  function textItems() {
+    if (!S.ocr) return [];
+    const out = [];
+    for (const w of S.ocr.words) {
+      const desc = /[gjpqyQ,;()]/.test(w.str), accCap = /[ÁÄČĎÉÍĹĽŇÓÔŔŠŤÚÝŽĚŘŮ]/.test(w.str);
+      const noAsc = /^[acemnorsuvwxzáäčéíňóôŕšúýž.\-]+$/.test(w.str);
+      const th = w.rot ? w.w : w.h, len = w.rot ? w.h : w.w;
+      let cap = th * (desc ? 0.76 : 1) * (accCap ? 0.8 : 1);
+      if (noAsc) cap = th * 1.38;
+      const descent = desc ? th * 0.22 : 0;
+      let bx, by;
+      if (!w.rot) { bx = w.x; by = w.y + w.h - descent; } else { bx = w.x + w.w - descent; by = w.y + w.h; }
+      const [x, y] = toVec(bx, by);
+      out.push({ x, y, w: len, h: cap, rot: w.rot, str: w.str });
+    }
+    return out;
+  }
+
+  function downloadTXT() {
+    const lines = textLines(S.ocr.words);
+    let txt = '', lastRot = 0;
+    for (const l of lines) { if (l.rot && !lastRot) txt += '\n--- zvislý text ---\n'; lastRot = l.rot; txt += l.text + '\n'; }
+    save((S.isSample ? 'ukazka' : S.name) + '_text.txt', new Blob(['﻿' + txt], { type: 'text/plain' }), $('txtBtn'));
+  }
+
+  // ---------- symbols ----------
+  function setPicking(on) {
+    S.picking = on; $('symPick').setAttribute('aria-pressed', String(on));
+    $('pickBanner').hidden = !on; cv.classList.toggle('pick', on);
+    if (!on) S.sel = null;
+    draw();
+  }
+  function nameNear(box) {
+    if (!S.ocr) return '';
+    const cy = box.y + box.h / 2, right = box.x + box.w;
+    const cand = S.ocr.words.filter(w => !w.rot && w.x >= right - 2 && w.x < right + 30 * Math.max(box.w, box.h) &&
+      Math.abs(w.y + w.h / 2 - cy) < Math.max(box.h, w.h) * 0.6);
+    if (!cand.length) return '';
+    cand.sort((a, b) => a.x - b.x);
+    const out = [cand[0]];
+    for (let i = 1; i < cand.length && out.length < 8; i++) {
+      const p = out[out.length - 1];
+      if (cand[i].x - (p.x + p.w) > 3 * p.h) break;
+      out.push(cand[i]);
+    }
+    return out.map(w => w.str).join(' ').replace(/^[-–:]+\s*/, '');
+  }
+  function showSymForm(box) {
+    S.pendingBox = box;
+    const pc = $('symPrev'), g = pc.getContext('2d'), sc = Math.min(120 / box.w, 80 / box.h, 4);
+    pc.width = Math.max(8, Math.round(box.w * sc)); pc.height = Math.max(8, Math.round(box.h * sc));
+    g.imageSmoothingEnabled = true; g.fillStyle = '#fff'; g.fillRect(0, 0, pc.width, pc.height);
+    g.drawImage(S.src, box.x, box.y, box.w, box.h, 0, 0, pc.width, pc.height);
+    $('symName').value = nameNear(box) || 'Značka ' + (S.syms.length + 1);
+    $('symForm').hidden = false; $('symName').focus(); $('symName').select();
+  }
+  async function searchSym(sym) {
+    sym.busy = true; renderSyms();
+    try {
+      const r = await job('sym', S.bm, S.W, S.H, { box: sym.box, opts: { threshold: +$('sim').value / 100, rotate: true } }, t => { $('symMsg').textContent = t; });
+      sym.matches = r.matches;
+      $('symMsg').textContent = '„' + sym.name + '“: nájdených ' + r.matches.length + '×.';
+    } catch (e) { $('symMsg').textContent = 'Hľadanie zlyhalo: ' + e.message; }
+    sym.busy = false; renderSyms(); draw();
+  }
+  function renderSyms() {
+    const ul = $('symList'); ul.innerHTML = '';
+    for (const s of S.syms) {
+      const li = document.createElement('li');
+      const i = document.createElement('i'); i.style.background = s.color;
+      const n = document.createElement('span'); n.textContent = s.name; n.title = s.name;
+      const b = document.createElement('b'); b.textContent = s.busy ? '…' : (s.matches ? s.matches.length + '×' : '–');
+      const x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', 'Odstrániť značku ' + s.name);
+      x.onclick = () => { S.syms = S.syms.filter(q => q !== s); renderSyms(); draw(); };
+      li.append(i, n, b, x); ul.appendChild(li);
+    }
+    $('csvBtn').disabled = !S.syms.some(s => s.matches && s.matches.length);
+  }
+  function downloadCSV() {
+    const rows = [['Značka', 'Počet']];
+    for (const s of S.syms) rows.push([s.name, s.matches ? s.matches.length : 0]);
+    rows.push([], ['Značka', 'X [mm]', 'Y [mm]', 'Otočenie [°]', 'Podobnosť [%]']);
+    const k = 25.4 / S.dpi * Math.max(1, +$('scale').value || 1);
+    for (const s of S.syms) for (const m of s.matches || []) {
+      const [x, y] = toVec(m.x + m.w / 2, m.y + m.h / 2);
+      rows.push([s.name, fmtD(x * k, 1), fmtD((S.res.h - y) * k, 1), m.rot * 90, Math.round(m.score * 100)]);
+    }
+    save((S.isSample ? 'ukazka' : S.name) + '_vykaz_znaciek.csv', new Blob([VecExport.csv(rows)], { type: 'text/csv' }), $('csvBtn'));
+  }
+
+  // Blocks for DXF: geometry of the marked symbol, inserted at every match.
+  function symbolBlocks() {
+    const r = S.res, blocks = [];
+    const nL = r.linesOff.length - 1, nF = r.fillsOff.length - 1;
+    const skipLines = new Uint8Array(Math.max(0, nL)), skipFills = new Uint8Array(Math.max(0, nF));
+    const pad = Math.max(2, r.medianW || r.sw);
+    const vbox = b => {
+      const pts = [toVec(b.x, b.y), toVec(b.x + b.w, b.y), toVec(b.x, b.y + b.h), toVec(b.x + b.w, b.y + b.h)];
+      return { x0: Math.min(...pts.map(p => p[0])) - pad, y0: Math.min(...pts.map(p => p[1])) - pad, x1: Math.max(...pts.map(p => p[0])) + pad, y1: Math.max(...pts.map(p => p[1])) + pad };
+    };
+    const inside = (data, s, e, B) => {
+      for (let p = s; p < e; p++) { const x = data[2 * p], y = data[2 * p + 1]; if (x < B.x0 || x > B.x1 || y < B.y0 || y > B.y1) return false; }
+      return true;
+    };
+    for (const s of S.syms) {
+      if (!s.matches || !s.matches.length) continue;
+      const B = vbox(s.box), [cx, cy] = toVec(s.box.x + s.box.w / 2, s.box.y + s.box.h / 2);
+      const lines = [], fills = [];
+      for (let i = 0; i < nL; i++) {
+        const a = r.linesOff[i], e = r.linesOff[i + 1];
+        if (!inside(r.linesData, a, e, B)) continue;
+        const pts = []; for (let p = a; p < e; p++) pts.push(r.linesData[2 * p] - cx, r.linesData[2 * p + 1] - cy);
+        lines.push({ pts, closed: !!r.linesClosed[i] });
+      }
+      for (let i = 0; i < nF; i++) {
+        const a = r.fillsOff[i], e = r.fillsOff[i + 1];
+        if (!inside(r.fillsData, a, e, B)) continue;
+        const pts = []; for (let p = a; p < e; p++) pts.push(r.fillsData[2 * p] - cx, r.fillsData[2 * p + 1] - cy);
+        fills.push(pts);
+      }
+      if (!lines.length && !fills.length) continue;
+      const inserts = [];
+      for (const m of s.matches) {
+        const MB = vbox(m), [mx, my] = toVec(m.x + m.w / 2, m.y + m.h / 2);
+        inserts.push({ x: mx, y: my, rot: (360 - 90 * m.rot) % 360 });
+        for (let i = 0; i < nL; i++) if (!skipLines[i] && inside(r.linesData, r.linesOff[i], r.linesOff[i + 1], MB)) skipLines[i] = 1;
+        for (let i = 0; i < nF; i++) if (!skipFills[i] && inside(r.fillsData, r.fillsOff[i], r.fillsOff[i + 1], MB)) skipFills[i] = 1;
+      }
+      blocks.push({ name: s.name, lines, fills, inserts });
+    }
+    return { blocks, skipLines, skipFills };
   }
 
   // ---------- viewer ----------
@@ -400,10 +1000,11 @@ canvas#view.drag { cursor: grabbing; }
     ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, S.src.width, S.src.height);
     const P = S.paths, v = P ? S.view : 'scan';
     if (v !== 'vec') {
+      ctx.save(); applyScanTransform(ctx);
       ctx.globalAlpha = v === 'over' ? 0.32 : 1;
       ctx.imageSmoothingEnabled = S.k < 3;
       ctx.drawImage(S.src, 0, 0);
-      ctx.globalAlpha = 1;
+      ctx.restore();
     }
     if (P && v !== 'scan') {
       const over = v === 'over', col = over ? css('--trace') || '#C81E8A' : '#000';
@@ -413,7 +1014,42 @@ canvas#view.drag { cursor: grabbing; }
       ctx.lineWidth = over ? Math.max(1.3 / S.k, S.res.sw * 0.35) : S.res.sw;
       ctx.stroke(P.l);
     }
-    // scale bar
+    // recognized text
+    if (S.ocr && $('showText').getAttribute('aria-pressed') === 'true') {
+      const col = css('--ocr') || '#0A7F8F';
+      ctx.save(); applyScanTransform(ctx);
+      ctx.strokeStyle = col; ctx.lineWidth = 1 / S.k; ctx.globalAlpha = 0.9;
+      for (const w of S.ocr.words) ctx.strokeRect(w.x, w.y, w.w, w.h);
+      ctx.restore();
+      if (S.k > 0.25) {
+        ctx.save(); ctx.fillStyle = col; ctx.textBaseline = 'alphabetic';
+        for (const t of textItems()) {
+          ctx.save(); ctx.translate(t.x, t.y); ctx.rotate(-t.rot * Math.PI / 180);
+          ctx.font = (t.h / 0.716).toFixed(1) + 'px Arial, Helvetica, sans-serif';
+          const mw = ctx.measureText(t.str).width || 1;
+          ctx.scale(t.w / mw, 1); ctx.globalAlpha = S.tmode === 'replace' ? 1 : 0.85;
+          ctx.fillText(t.str, 0, 0); ctx.restore();
+        }
+        ctx.restore();
+      }
+    }
+    // symbols
+    if (S.syms.length) {
+      ctx.save(); applyScanTransform(ctx);
+      ctx.lineWidth = Math.max(2 / S.k, 2);
+      for (const s of S.syms) {
+        ctx.strokeStyle = s.color; ctx.fillStyle = s.color;
+        for (const m of s.matches || []) { ctx.globalAlpha = 0.18; ctx.fillRect(m.x, m.y, m.w, m.h); ctx.globalAlpha = 1; ctx.strokeRect(m.x, m.y, m.w, m.h); }
+        ctx.setLineDash([6 / S.k, 4 / S.k]); ctx.strokeRect(s.box.x - 3, s.box.y - 3, s.box.w + 6, s.box.h + 6); ctx.setLineDash([]);
+      }
+      ctx.restore();
+    }
+    if (S.sel || S.pendingBox) {
+      const b = S.sel || S.pendingBox;
+      ctx.save(); applyScanTransform(ctx);
+      ctx.strokeStyle = css('--accent') || '#0A63C2'; ctx.lineWidth = 2 / S.k; ctx.setLineDash([5 / S.k, 3 / S.k]);
+      ctx.strokeRect(b.x, b.y, b.w, b.h); ctx.restore();
+    }
     const mmPerPx = 25.4 / S.dpi / S.k, nice = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
     const mm = nice.find(n => n / mmPerPx >= 70) || 1000;
     $('scaleTxt').textContent = mm + ' mm';
@@ -423,11 +1059,21 @@ canvas#view.drag { cursor: grabbing; }
     const k = Math.min(60, Math.max(0.01, S.k * f)); f = k / S.k;
     S.ox = x - (x - S.ox) * f; S.oy = y - (y - S.oy) * f; S.k = k; draw();
   }
+  const scanAt = (cx, cy) => { const r = cv.getBoundingClientRect(); return toScan((cx - r.left - S.ox) / S.k, (cy - r.top - S.oy) / S.k); };
   cv.addEventListener('wheel', e => { e.preventDefault(); const r = cv.getBoundingClientRect(); zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
-  const ptr = new Map(); let pinch = 0;
-  cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); ptr.set(e.pointerId, [e.clientX, e.clientY]); cv.classList.add('drag'); pinch = 0; });
+  const ptr = new Map(); let pinch = 0, selStart = null;
+  cv.addEventListener('pointerdown', e => {
+    cv.setPointerCapture(e.pointerId);
+    if (S.picking && e.button === 0 && ptr.size === 0) { selStart = scanAt(e.clientX, e.clientY); S.sel = { x: selStart[0], y: selStart[1], w: 0, h: 0 }; ptr.set(e.pointerId, [e.clientX, e.clientY]); return; }
+    ptr.set(e.pointerId, [e.clientX, e.clientY]); cv.classList.add('drag'); pinch = 0; selStart = null;
+  });
   cv.addEventListener('pointermove', e => {
     const p = ptr.get(e.pointerId); if (!p) return;
+    if (selStart) {
+      const q = scanAt(e.clientX, e.clientY);
+      S.sel = { x: Math.min(selStart[0], q[0]), y: Math.min(selStart[1], q[1]), w: Math.abs(q[0] - selStart[0]), h: Math.abs(q[1] - selStart[1]) };
+      draw(); return;
+    }
     if (ptr.size === 1) { S.ox += e.clientX - p[0]; S.oy += e.clientY - p[1]; draw(); }
     ptr.set(e.pointerId, [e.clientX, e.clientY]);
     if (ptr.size === 2) {
@@ -436,20 +1082,54 @@ canvas#view.drag { cursor: grabbing; }
       pinch = d;
     }
   });
-  const up = e => { ptr.delete(e.pointerId); pinch = 0; if (!ptr.size) cv.classList.remove('drag'); };
+  const up = e => {
+    ptr.delete(e.pointerId); pinch = 0; if (!ptr.size) cv.classList.remove('drag');
+    if (selStart) {
+      selStart = null;
+      const b = S.sel; S.sel = null;
+      if (b && b.w >= 6 && b.h >= 6) {
+        const box = { x: Math.max(0, Math.round(b.x)), y: Math.max(0, Math.round(b.y)), w: Math.round(b.w), h: Math.round(b.h) };
+        setPicking(false); showSymForm(box);
+      } else draw();
+    }
+  };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   const center = f => { const r = cv.getBoundingClientRect(); zoomAt(r.width / 2, r.height / 2, f); };
   $('zIn').onclick = () => center(1.5); $('zOut').onclick = () => center(1 / 1.5); $('zFit').onclick = fit;
   new ResizeObserver(() => draw()).observe($('stage'));
   if (window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change', draw);
   new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && S.picking) setPicking(false); });
 
   // ---------- downloads ----------
+  async function save(name, blob, btn) {
+    const size = blob.size > 1e6 ? fmtD(blob.size / 1e6, 1) + ' MB' : Math.max(1, Math.round(blob.size / 1e3)) + ' kB';
+    if (inArtifact) {
+      const dl = await dlReady;
+      if (!dl) { msg('Sťahovanie tu nie je dostupné. Otvor stránku priamo v claude.ai alebo ju spusti na vlastnom webe.'); return size; }
+      try { await dl.save({ filename: name, data: blob }); msg('Uložené: ' + name + (/\.zip$/.test(name) ? '. Rozbaľ .zip a otvor DXF v CAD-e.' : '')); }
+      catch (e) {
+        msg(e && e.code === 'declined' ? 'Uloženie zrušené.' : e && e.code === 'rate_limited' ? 'Chvíľu počkaj a skús to znova.'
+          : 'Súbor sa nepodarilo uložiť (' + (e && e.code || 'chyba') + ').');
+      }
+    } else {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 20000);
+      msg('Stiahnuté: ' + name + ' (' + size + ')');
+    }
+    return size;
+  }
+  function annotations(fmt) {
+    const ann = { texts: textItems(), textVisible: S.tmode === 'replace' };
+    if (fmt === 'dxf' && $('symBlocks').checked && S.syms.length) Object.assign(ann, symbolBlocks());
+    return ann;
+  }
   async function build(fmt) {
     const r = S.res, enc = new TextEncoder(), base = (S.isSample ? 'ukazka' : S.name) + (S.mode === 'center' ? '_osi' : '_obrys');
-    if (fmt === 'svg') return { name: base + '.svg', blob: new Blob([VecExport.svg(r)], { type: 'image/svg+xml' }) };
-    if (fmt === 'pdf') return { name: base + '.pdf', blob: new Blob([await VecExport.pdf(r)], { type: 'application/pdf' }) };
-    const n = Math.max(1, +$('scale').value || 1), txt = VecExport.dxf(r, n);
+    const ann = annotations(fmt);
+    if (fmt === 'svg') return { name: base + '.svg', blob: new Blob([VecExport.svg(r, ann)], { type: 'image/svg+xml' }) };
+    if (fmt === 'pdf') return { name: base + '.pdf', blob: new Blob([await VecExport.pdf(r, ann)], { type: 'application/pdf' }) };
+    const n = Math.max(1, +$('scale').value || 1), txt = VecExport.dxf(r, n, ann);
     if (!inArtifact) return { name: base + '.dxf', blob: new Blob([txt], { type: 'application/dxf' }) };
     return { name: base + '_dxf.zip', blob: new Blob([await VecExport.zip(base + '.dxf', enc.encode(txt))], { type: 'application/zip' }) };
   }
@@ -458,21 +1138,7 @@ canvas#view.drag { cursor: grabbing; }
     btn.disabled = true; msg('Pripravujem ' + fmt.toUpperCase() + '…'); await tick();
     try {
       const { name, blob } = await build(fmt);
-      const size = blob.size > 1e6 ? fmtD(blob.size / 1e6, 1) + ' MB' : Math.max(1, Math.round(blob.size / 1e3)) + ' kB';
-      btn.querySelector('small').textContent = size;
-      if (inArtifact) {
-        const dl = await dlReady;
-        if (!dl) { msg('Sťahovanie tu nie je dostupné. Otvor stránku priamo v claude.ai alebo ju spusti na vlastnom webe.'); return; }
-        try { await dl.save({ filename: name, data: blob }); msg('Uložené: ' + name + (fmt === 'dxf' ? '. Rozbaľ .zip a otvor DXF v CAD-e.' : '')); }
-        catch (e) {
-          msg(e && e.code === 'declined' ? 'Uloženie zrušené.' : e && e.code === 'rate_limited' ? 'Chvíľu počkaj a skús to znova.'
-            : 'Súbor sa nepodarilo uložiť (' + (e && e.code || 'chyba') + ').');
-        }
-      } else {
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
-        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 20000);
-        msg('Stiahnuté: ' + name + ' (' + size + ')');
-      }
+      btn.querySelector('small').textContent = await save(name, blob, btn);
     } catch (e) { msg('Export zlyhal: ' + (e && e.message || e)); }
     finally { btn.disabled = false; }
   }
@@ -480,7 +1146,7 @@ canvas#view.drag { cursor: grabbing; }
 
   // ---------- controls ----------
   let timer = 0;
-  const later = () => { clearTimeout(timer); timer = setTimeout(process, 350); };
+  const later = () => { clearTimeout(timer); timer = setTimeout(() => process(), 350); };
   function modeUI() {
     const c = S.mode === 'center';
     $('modeHint').textContent = c ? 'Každá čiara je jedna polyčiara v osi. Vhodné na ďalšiu prácu v CAD-e.'
@@ -488,20 +1154,51 @@ canvas#view.drag { cursor: grabbing; }
     $('fillsRow').hidden = !c; $('pruneRow').hidden = !c;
     document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)));
   }
+  function tmodeUI() {
+    $('tmodeHint').textContent = S.tmode === 'replace'
+      ? 'Písmo z čiar sa nahradí skutočným textom (v DXF upraviteľný). Pozor: chybne prečítané slovo bude chybné aj vo výkrese.'
+      : 'Čiary písma ostanú. Text sa pridá ako vyhľadávateľná vrstva do PDF a do DXF ako vypnutá hladina TEXT-OCR.';
+    document.querySelectorAll('[data-tmode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tmode === S.tmode)));
+  }
   document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { S.mode = b.dataset.mode; modeUI(); process(); }));
+  document.querySelectorAll('[data-tmode]').forEach(b => b.addEventListener('click', () => {
+    S.tmode = b.dataset.tmode; tmodeUI();
+    if (S.ocr) process(); else draw();
+  }));
   document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
     S.view = b.dataset.view;
     document.querySelectorAll('[data-view]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
     draw();
   }));
+  $('showText').onclick = () => { const b = $('showText'); b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true')); draw(); };
   $('thr').oninput = () => { const v = +$('thr').value; $('thrVal').textContent = v === 0 ? 'auto' : String(v); later(); };
   $('turd').oninput = () => { $('turdVal').textContent = $('turd').value + ' px'; later(); };
   $('eps').oninput = () => { $('epsVal').textContent = fmtD(+$('eps').value, 1) + ' px'; later(); };
-  $('keepFills').onchange = process; $('prune').onchange = process;
-  $('scale').oninput = scaleHint;
+  $('keepFills').onchange = () => process(); $('prune').onchange = () => process(); $('straight').onchange = () => process();
+  $('flat').onchange = () => { S.bgMap = null; process(); };
+  $('scale').oninput = () => { S.manualScale = true; S.scaleFrom = ''; scaleHint(); };
+  $('autoBtn').onclick = () => autoSetup();
+  $('ocrBtn').onclick = () => runOCR();
+  $('txtBtn').onclick = downloadTXT;
+  $('csvBtn').onclick = downloadCSV;
+  $('symPick').onclick = () => { if (!S.res) return; $('symForm').hidden = true; S.pendingBox = null; setPicking(!S.picking); };
+  $('symCancel').onclick = () => { $('symForm').hidden = true; S.pendingBox = null; draw(); };
+  $('symFind').onclick = () => {
+    const box = S.pendingBox; if (!box) return;
+    const sym = { box, name: $('symName').value.trim() || 'Značka ' + (S.syms.length + 1), color: COLORS[S.syms.length % COLORS.length], matches: null };
+    S.syms.push(sym); S.pendingBox = null; $('symForm').hidden = true;
+    renderSyms(); searchSym(sym);
+  };
+  $('symName').addEventListener('keydown', e => { if (e.key === 'Enter') $('symFind').click(); });
+  let simTimer = 0;
+  $('sim').oninput = () => {
+    $('simVal').textContent = $('sim').value + ' %';
+    clearTimeout(simTimer);
+    simTimer = setTimeout(async () => { for (const s of S.syms) await searchSym(s); }, 400);
+  };
   $('dpi').onchange = () => {
     if (S.pdf) renderPdfPage(+$('page').value || 1).catch(e => { idle(); msg('Stranu sa nepodarilo načítať: ' + e.message); });
-    else if (!S.isSample && S.src) { S.dpi = +$('dpi').value; process(); }
+    else if (!S.isSample && S.src) { S.dpi = $('dpi').value === 'auto' ? 300 : +$('dpi').value; process(); }
   };
   $('page').onchange = () => renderPdfPage(+$('page').value).catch(e => { idle(); msg('Stranu sa nepodarilo načítať: ' + e.message); });
   $('pick').onclick = () => $('file').click();
@@ -511,7 +1208,9 @@ canvas#view.drag { cursor: grabbing; }
   ['dragleave', 'drop'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
   document.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) openFile(f); });
 
-  modeUI();
+  modeUI(); tmodeUI();
+  S.fresh = false;
+  if (/[?&]test=1\b/.test(location.search)) window.__vz = { S, showSymForm, runOCR };
   setSource(sampleCanvas(), 300, 'ukazka', true);
 })();
 </script>

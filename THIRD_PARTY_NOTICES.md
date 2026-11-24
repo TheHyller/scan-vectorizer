@@ -63,3 +63,13 @@ notice included.
 > Prefer not to deal with any of this? **Publish the source only** and let users
 > build their own with `build_exe.ps1` / `build_installer.ps1` (which download the
 > tools onto their machine) — then you distribute no third-party binaries at all.
+
+## Web app (`web/`)
+
+The browser version bundles these files in `web/vendor/` (unmodified, license files alongside):
+
+| Component | Used for | License | Source |
+|-----------|----------|---------|--------|
+| **pdf.js** 3.11.174 (`pdfjs-dist`) | reading PDF files in the browser | Apache License 2.0 | https://github.com/mozilla/pdf.js |
+| **Tesseract.js** 5.1.1 + **tesseract.js-core** 5.1.1 | OCR in the browser (WebAssembly) | Apache License 2.0 | https://github.com/naptha/tesseract.js |
+| **tessdata** `slk`, `eng` (4.0.0_best_int, via `@tesseract.js-data`) | OCR language data | Apache License 2.0 | https://github.com/tesseract-ocr/tessdata |
