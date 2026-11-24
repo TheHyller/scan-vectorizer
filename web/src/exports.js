@@ -4,6 +4,9 @@
 //   textVisible: true -> text replaces the letter shapes (drawn); false -> hidden/searchable only
 //   blocks: [{ name, lines: [{ pts:[x,y,...], closed }], fills: [[x,y,...]], inserts: [{ x, y, rot }] }]  (DXF only)
 //   skipLines / skipFills: Uint8Array per polyline, 1 = replaced by a block insert (DXF only)
+//   layerNames: { lines, fills, outline, text, textOcr, symbols } (DXF layer names, defaults are Slovak)
+// Colour layers: res.colors = [{ layer, fillLayer, rgb: [r, g, b], aci, sw }], res.linesColor / res.fillsColor
+//   hold the colour index of every polyline.
 const VecExport = (function () {
   'use strict';
   const r1 = v => Math.round(v * 10) / 10;
@@ -14,10 +17,11 @@ const VecExport = (function () {
   }
 
   // Returns path data in chunks (very long single attributes break some SVG readers).
-  function pathD(data, off, closedArr, allClosed) {
+  function pathD(data, off, closedArr, allClosed, keep) {
     const chunks = [];
     let out = [], size = 0;
     eachPoly(data, off, (s, e, i) => {
+      if (keep && !keep(i)) return;
       if (size > 400000) { chunks.push(out.join('')); out = []; size = 0; }
       let str = 'M' + r1(data[2 * s]) + ' ' + r1(data[2 * s + 1]);
       for (let k = s + 1; k < e; k++) str += ' ' + r1(data[2 * k]) + ' ' + r1(data[2 * k + 1]);
@@ -32,12 +36,16 @@ const VecExport = (function () {
     const mmW = (res.w * 25.4 / res.dpi).toFixed(2), mmH = (res.h * 25.4 / res.dpi).toFixed(2);
     let s = '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="' + mmW + 'mm" height="' + mmH +
       'mm" viewBox="0 0 ' + res.w + ' ' + res.h + '">\n';
-    if (res.fillsOff.length > 1)
-      s += '<g id="plochy" fill="#000" fill-rule="evenodd">\n' +
-        pathD(res.fillsData, res.fillsOff, null, true).map(d => '<path d="' + d + '"/>').join('\n') + '\n</g>\n';
-    if (res.linesOff.length > 1)
-      s += '<g id="osi" fill="none" stroke="#000" stroke-width="' + r1(res.sw) + '" stroke-linecap="round" stroke-linejoin="round">\n' +
-        pathD(res.linesData, res.linesOff, res.linesClosed, false).map(d => '<path d="' + d + '"/>').join('\n') + '\n</g>\n';
+    const cols = res.colors && res.colors.length ? res.colors : [{ layer: 'osi', fillLayer: 'plochy', rgb: [0, 0, 0], sw: res.sw }];
+    const hex = c => '#' + c.map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+    cols.forEach((col, ci) => {
+      const kf = res.fillsColor ? i => res.fillsColor[i] === ci : null, kl = res.linesColor ? i => res.linesColor[i] === ci : null;
+      const fd = res.fillsOff.length > 1 ? pathD(res.fillsData, res.fillsOff, null, true, kf) : [];
+      const ld = res.linesOff.length > 1 ? pathD(res.linesData, res.linesOff, res.linesClosed, false, kl) : [];
+      if (fd.length) s += '<g id="' + esc(col.fillLayer) + '" fill="' + hex(col.rgb) + '" fill-rule="evenodd">\n' + fd.map(d => '<path d="' + d + '"/>').join('\n') + '\n</g>\n';
+      if (ld.length) s += '<g id="' + esc(col.layer) + '" fill="none" stroke="' + hex(col.rgb) + '" stroke-width="' + r1(col.sw || res.sw) +
+        '" stroke-linecap="round" stroke-linejoin="round">\n' + ld.map(d => '<path d="' + d + '"/>').join('\n') + '\n</g>\n';
+    });
     if (ann && ann.texts && ann.texts.length && ann.textVisible) {
       s += '<g id="text" font-family="Arial, Helvetica, sans-serif" fill="#000">\n';
       for (const t of ann.texts) {
@@ -70,15 +78,28 @@ const VecExport = (function () {
     const k = 25.4 / res.dpi * (scale || 1), h = res.h;
     const X = v => (v * k).toFixed(3), Y = v => ((h - v) * k).toFixed(3);
     const o = [];
+    const N = Object.assign({ lines: 'OSI', fills: 'PLOCHY', outline: 'OBRYS', text: 'TEXT', textOcr: 'TEXT-OCR', symbols: 'ZNACKY' }, ann.layerNames || {});
     const layers = [];
-    if (res.linesOff.length > 1) layers.push(['OSI', 7]);
-    if (res.fillsOff.length > 1) layers.push([res.linesOff.length > 1 ? 'PLOCHY' : 'OBRYS', res.linesOff.length > 1 ? 8 : 7]);
-    if (!layers.length) layers.push(['OSI', 7]);
-    const fillLayer = layers[layers.length - 1][0];
-    const texts = ann.texts || [], textLayer = ann.textVisible ? 'TEXT' : 'TEXT-OCR';
+    const hasL = res.linesOff.length > 1, hasF = res.fillsOff.length > 1;
+    let lineLayer = () => N.lines, fillLayer = () => hasL ? N.fills : N.outline;
+    if (res.colors && res.colors.length) {
+      const seen = new Set();
+      const add = (n, c) => { if (!seen.has(n)) { seen.add(n); layers.push([n, c]); } };
+      res.colors.forEach((c, ci) => {
+        if (hasL && res.linesColor.some(v => v === ci)) add(c.layer, c.aci);
+        if (hasF && res.fillsColor.some(v => v === ci)) add(hasL ? c.fillLayer : c.layer, c.aci);
+      });
+      lineLayer = i => res.colors[res.linesColor[i]].layer;
+      fillLayer = i => hasL ? res.colors[res.fillsColor[i]].fillLayer : res.colors[res.fillsColor[i]].layer;
+    } else {
+      if (hasL) layers.push([N.lines, 7]);
+      if (hasF) layers.push([hasL ? N.fills : N.outline, hasL ? 8 : 7]);
+    }
+    if (!layers.length) layers.push([N.lines, 7]);
+    const texts = ann.texts || [], textLayer = ann.textVisible ? N.text : N.textOcr;
     if (texts.length) layers.push([textLayer, ann.textVisible ? 7 : -3]);       // hidden OCR layer is switched off
     const blocks = (ann.blocks || []).filter(b => b.inserts && b.inserts.length);
-    if (blocks.length) layers.push(['ZNACKY', 1]);
+    if (blocks.length) layers.push([N.symbols, 1]);
     o.push('0\nSECTION\n2\nHEADER\n9\n$ACADVER\n1\nAC1009\n9\n$INSBASE\n10\n0.0\n20\n0.0\n30\n0.0\n' +
       '9\n$EXTMIN\n10\n0.0\n20\n0.0\n30\n0.0\n9\n$EXTMAX\n10\n' + X(res.w) + '\n20\n' + (h * k).toFixed(3) + '\n30\n0.0\n' +
       '9\n$LIMMIN\n10\n0.0\n20\n0.0\n9\n$LIMMAX\n10\n' + X(res.w) + '\n20\n' + (h * k).toFixed(3) + '\n0\nENDSEC\n');
@@ -117,21 +138,21 @@ const VecExport = (function () {
     }
 
     o.push('0\nSECTION\n2\nENTITIES\n');
-    function emit(data, off, closedArr, allClosed, layer, skip) {
+    function emit(data, off, closedArr, allClosed, layerOf, skip) {
       eachPoly(data, off, (s, e, i) => {
         if (skip && skip[i]) return;
-        poly(layer, data.subarray(2 * s, 2 * e), allClosed || (closedArr && closedArr[i]), X, Y);
+        poly(layerOf(i), data.subarray(2 * s, 2 * e), allClosed || (closedArr && closedArr[i]), X, Y);
       });
     }
-    if (res.linesOff.length > 1) emit(res.linesData, res.linesOff, res.linesClosed, false, 'OSI', ann.skipLines);
-    if (res.fillsOff.length > 1) emit(res.fillsData, res.fillsOff, null, true, fillLayer, ann.skipFills);
+    if (hasL) emit(res.linesData, res.linesOff, res.linesClosed, false, lineLayer, ann.skipLines);
+    if (hasF) emit(res.fillsData, res.fillsOff, null, true, fillLayer, ann.skipFills);
     for (const t of texts) {
       const a = t.rot * Math.PI / 180, ex = t.x + Math.cos(a) * t.w, ey = t.y - Math.sin(a) * t.w;
       o.push('0\nTEXT\n8\n' + textLayer + '\n10\n' + X(t.x) + '\n20\n' + Y(t.y) + '\n30\n0.0\n40\n' + (t.h * k).toFixed(3) +
         '\n1\n' + dxfStr(t.str) + '\n50\n' + (t.rot || 0).toFixed(3) + '\n7\nSTANDARD\n72\n5\n11\n' + X(ex) + '\n21\n' + Y(ey) + '\n31\n0.0\n');
     }
     for (const b of blocks) for (const p of b.inserts)
-      o.push('0\nINSERT\n8\nZNACKY\n2\n' + b._dxfName + '\n10\n' + X(p.x) + '\n20\n' + Y(p.y) + '\n30\n0.0\n41\n1.0\n42\n1.0\n50\n' + (p.rot || 0).toFixed(3) + '\n');
+      o.push('0\nINSERT\n8\n' + N.symbols + '\n2\n' + b._dxfName + '\n10\n' + X(p.x) + '\n20\n' + Y(p.y) + '\n30\n0.0\n41\n1.0\n42\n1.0\n50\n' + (p.rot || 0).toFixed(3) + '\n');
     o.push('0\nENDSEC\n0\nEOF\n');
     return o.join('');
   }
@@ -194,19 +215,30 @@ const VecExport = (function () {
     const enc = new TextEncoder();
     const s = 72 / res.dpi, pw = (res.w * s).toFixed(2), ph = (res.h * s).toFixed(2);
     const c = [s.toFixed(6) + ' 0 0 ' + (-s).toFixed(6) + ' 0 ' + ph + ' cm\n0 g 0 G\n'];
-    function emit(data, off, closedArr, allClosed) {
+    function emit(data, off, closedArr, allClosed, keep) {
+      let n = 0;
       eachPoly(data, off, (a, e, i) => {
+        if (keep && !keep(i)) return;
+        n++;
         let str = r1(data[2 * a]) + ' ' + r1(data[2 * a + 1]) + ' m\n';
         for (let p = a + 1; p < e; p++) str += r1(data[2 * p]) + ' ' + r1(data[2 * p + 1]) + ' l\n';
         if (allClosed || (closedArr && closedArr[i])) str += 'h\n';
         c.push(str);
       });
+      return n;
     }
-    if (res.fillsOff.length > 1) { emit(res.fillsData, res.fillsOff, null, true); c.push('f*\n'); }
-    if (res.linesOff.length > 1) {
-      c.push(r1(res.sw) + ' w 1 J 1 j\n');
-      emit(res.linesData, res.linesOff, res.linesClosed, false); c.push('S\n');
-    }
+    const cols = res.colors && res.colors.length ? res.colors : [{ rgb: [0, 0, 0], sw: res.sw }];
+    cols.forEach((col, ci) => {
+      const rgb = col.rgb.map(v => (v / 255).toFixed(3)).join(' ');
+      c.push(rgb + ' rg ' + rgb + ' RG\n');
+      const kf = res.fillsColor ? i => res.fillsColor[i] === ci : null, kl = res.linesColor ? i => res.linesColor[i] === ci : null;
+      if (res.fillsOff.length > 1 && emit(res.fillsData, res.fillsOff, null, true, kf)) c.push('f*\n');
+      if (res.linesOff.length > 1) {
+        c.push(r1(col.sw || res.sw) + ' w 1 J 1 j\n');
+        if (emit(res.linesData, res.linesOff, res.linesClosed, false, kl)) c.push('S\n');
+      }
+    });
+    c.push('0 g 0 G\n');
     let font = null;
     if (ann && ann.texts && ann.texts.length) {
       const T = encodeText(ann.texts);

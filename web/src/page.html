@@ -27,7 +27,11 @@ body { background: var(--bg); color: var(--fg); font: 14px/1.45 var(--sans); }
 header { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 18px; padding-block: 10px;
   padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); border-bottom: 1px solid var(--line); }
 h1 { margin: 0; font: 600 20px/1.2 var(--cond); letter-spacing: .02em; text-transform: uppercase; }
-header p { margin: 0; color: var(--muted); font-size: 13px; }
+header p { margin: 0; color: var(--muted); font-size: 13px; flex: 1 1 320px; min-width: 0; }
+.lang { display: grid; grid-auto-flow: column; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; align-self: center; }
+.lang button { border: 0; border-radius: 0; padding: 4px 10px; font: 600 12px var(--mono); background: var(--bg); }
+.lang button + button { border-left: 1px solid var(--line); }
+.lang button[aria-pressed=true] { background: var(--fg); color: var(--bg); }
 aside { overflow-y: auto; padding-block: 14px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px;
   border-right: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; gap: 18px; }
 fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; min-width: 0; }
@@ -82,6 +86,11 @@ ul.syms li i { width: 12px; height: 12px; border-radius: 2px; }
 ul.syms li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 ul.syms li b { font: 600 13px var(--mono); font-variant-numeric: tabular-nums; }
 ul.syms li button { padding: 1px 7px; line-height: 1.2; }
+ul.syms li input[type=text] { padding: 2px 5px; font: 500 12px var(--mono); min-width: 0; }
+details.fine summary { cursor: pointer; font-weight: 500; padding: 4px 0; }
+details.fine[open] summary { margin-bottom: 8px; }
+.fine-body { display: flex; flex-direction: column; gap: 9px; }
+.fine-body input[type=number] { width: 96px; }
 main { position: relative; min-width: 0; min-height: 0; background: var(--desk); overflow: hidden; }
 canvas#view { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; display: block; }
 canvas#view.drag { cursor: grabbing; }
@@ -116,6 +125,7 @@ canvas#view.pick { cursor: crosshair; }
   <header>
     <h1>Vektorizér výkresov</h1>
     <p>Sken v PDF → vektorové PDF, SVG a DXF s textom a značkami. Všetko sa počíta v tvojom prehliadači, súbor nikam neodchádza.</p>
+    <div class="lang" role="group" aria-label="Jazyk / Language"><button type="button" data-lang="sk" aria-pressed="true">SK</button><button type="button" data-lang="en" aria-pressed="false">EN</button></div>
   </header>
 
   <aside>
@@ -135,7 +145,11 @@ canvas#view.pick { cursor: crosshair; }
     <fieldset>
       <legend>Automatické nastavenie</legend>
       <ul class="chips" id="autoChips"><li>Čaká sa na výkres…</li></ul>
-      <label class="check"><input type="checkbox" id="autoOn" checked><span>Nastaviť automaticky po načítaní súboru</span></label>
+      <div class="seg" role="group" aria-label="Režim nastavenia">
+        <button type="button" data-setup="auto" aria-pressed="true">Automaticky</button>
+        <button type="button" data-setup="manual" aria-pressed="false">Ručne</button>
+      </div>
+      <p class="hint" id="setupHint"></p>
       <button type="button" id="autoBtn">Nastaviť znova podľa skenu</button>
     </fieldset>
 
@@ -161,6 +175,37 @@ canvas#view.pick { cursor: crosshair; }
         <input type="range" id="turd" min="0" max="40" step="1" value="6"></label>
       <label><span class="row"><span>Zjednodušenie čiar</span><span class="val" id="epsVal">1,0 px</span></span>
         <input type="range" id="eps" min="0.4" max="3" step="0.1" value="1"></label>
+    </fieldset>
+
+    <fieldset>
+      <legend>Farby</legend>
+      <label class="check"><input type="checkbox" id="colorOn"><span>Farby ako samostatné hladiny</span></label>
+      <p class="hint">Každá farba zo skenu sa vektorizuje zvlášť. V DXF bude na vlastnej hladine s podobnou farbou, v SVG a PDF ostane farebná.</p>
+      <ul class="syms" id="colorList"></ul>
+    </fieldset>
+
+    <fieldset>
+      <legend>Doladenie</legend>
+      <details class="fine" id="fine">
+        <summary>Ďalšie parametre</summary>
+        <div class="fine-body">
+          <label><span class="row"><span>Natočenie skenu</span><span class="val" id="skewVal">auto</span></span>
+            <span class="row"><input type="number" id="skewIn" step="0.01" min="-15" max="15" placeholder="auto"><span class="hint">° · prázdne = automaticky</span></span></label>
+          <label><span class="row"><span>Tolerancia dorovnania čiar</span><span class="val" id="tolVal">2,0°</span></span>
+            <input type="range" id="tol" min="0.5" max="6" step="0.5" value="2"></label>
+          <label><span class="row"><span>Prichytenie koncov čiar</span><span class="val" id="snapVal">auto</span></span>
+            <input type="range" id="snap" min="0" max="21" step="1" value="0"></label>
+          <label><span class="row"><span>Odstraňovať výbežky kratšie ako</span><span class="val" id="spurVal">auto</span></span>
+            <input type="range" id="spur" min="0" max="40" step="1" value="0"></label>
+          <label><span class="row"><span>Hrúbka čiary vo výstupe</span><span class="val" id="lwVal">podľa skenu</span></span>
+            <input type="range" id="lw" min="0" max="20" step="1" value="0"></label>
+          <label><span class="row"><span>Citlivosť na farby</span><span class="val" id="chromaVal">55</span></span>
+            <input type="range" id="chroma" min="25" max="140" step="5" value="55"></label>
+          <label><span class="row"><span>Minimálna istota OCR</span><span class="val" id="confVal">65 %</span></span>
+            <input type="range" id="conf" min="30" max="95" step="5" value="65"></label>
+          <button type="button" id="resetFine">Obnoviť predvolené hodnoty</button>
+        </div>
+      </details>
     </fieldset>
 
     <fieldset>
@@ -243,8 +288,103 @@ canvas#view.pick { cursor: crosshair; }
 (function () {
   'use strict';
   const $ = id => document.getElementById(id);
-  const fmtN = n => Math.round(n).toLocaleString('sk-SK');
-  const fmtD = (n, d) => n.toLocaleString('sk-SK', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const EN = {
+    'Vektorizér výkresov': 'Drawing Vectorizer',
+    'Sken v PDF → vektorové PDF, SVG a DXF s textom a značkami. Všetko sa počíta v tvojom prehliadači, súbor nikam neodchádza.': 'Scanned PDF → vector PDF, SVG and DXF with text and symbols. Everything runs in your browser; the file never leaves your computer.',
+    'Jazyk / Language': 'Language / Jazyk',
+    'Vstup': 'Input', 'Vybrať PDF alebo obrázok': 'Choose a PDF or image', 'Ukážkový výkres. Vlož sem vlastný sken.': 'Sample drawing. Drop your own scan here.',
+    'Strana': 'Page', 'Rozlíšenie spracovania': 'Processing resolution',
+    'Automatické nastavenie': 'Automatic setup', 'Čaká sa na výkres…': 'Waiting for a drawing…',
+    'Nastaviť automaticky po načítaní súboru': 'Set up automatically when a file is loaded', 'Nastaviť znova podľa skenu': 'Set up again from the scan',
+    'Spôsob vektorizácie': 'Vectorization method', 'Osové čiary': 'Centerlines', 'Obrys': 'Outline',
+    'Narovnať šikmý sken a dorovnať vodorovné a zvislé čiary': 'Straighten a skewed scan and square up horizontal and vertical lines',
+    'Plné plochy (šípky, hrubé písmo) nechať ako vyplnený obrys': 'Keep solid areas (arrows, bold text) as filled outlines',
+    'Odstrániť krátke výbežky na čiarach': 'Remove short spurs on lines',
+    'Čistenie': 'Clean-up', 'Vyrovnať nerovnomerné pozadie (fotka, tieň)': 'Even out an uneven background (photo, shadow)',
+    'Prah čiernej': 'Black threshold', 'Úplne vľavo = automaticky. Vyššia hodnota zachytí aj bledé čiary.': 'Far left = automatic. A higher value also picks up faint lines.',
+    'Odstrániť škvrny do': 'Remove specks up to', 'Zjednodušenie čiar': 'Line simplification',
+    'Farby': 'Colours', 'Farby ako samostatné hladiny': 'Colours as separate layers',
+    'Každá farba zo skenu sa vektorizuje zvlášť. V DXF bude na vlastnej hladine s podobnou farbou, v SVG a PDF ostane farebná.': 'Each colour in the scan is vectorized separately. In DXF it gets its own layer with a matching colour; SVG and PDF keep the colours.',
+    'Text (OCR, slovenčina a angličtina)': 'Text (OCR, Slovak and English)', 'Rozpoznať text po načítaní súboru': 'Recognize text when a file is loaded',
+    'Aj zvislý text (približne 2× dlhšie)': 'Vertical text too (about 2× longer)', 'Rozpoznaný text vo výstupe': 'Recognized text in the output',
+    'Ponechať tvar písma': 'Keep letter shapes', 'Nahradiť písmom': 'Replace with text', 'Rozpoznať text': 'Recognize text', 'Stiahnuť TXT': 'Download TXT',
+    'Značky': 'Symbols', 'Označ jednu značku (napr. ventil v legende) a apka nájde na výkrese všetky rovnaké, aj otočené. V DXF z nich budú bloky.': 'Mark one symbol (e.g. a valve in the legend) and the app finds every copy on the drawing, rotated ones too. In DXF they become blocks.',
+    'Označiť značku na výkrese': 'Mark a symbol on the drawing', 'Názov značky': 'Symbol name', 'Nájsť všetky': 'Find all', 'Zrušiť': 'Cancel',
+    'Požadovaná podobnosť': 'Required similarity', 'V DXF nahradiť nájdené značky blokmi': 'Replace found symbols with blocks in DXF',
+    'Stiahnuť výkaz značiek (CSV)': 'Download symbol report (CSV)', 'Stiahnuť': 'Download', 'Mierka výkresu pre DXF 1 :': 'Drawing scale for DXF 1 :',
+    'Výsledok': 'Result', 'Zobrazenie': 'View', 'Sken': 'Scan', 'Prekrytie': 'Overlay', 'Vektor': 'Vector', 'Text': 'Text',
+    'Oddialiť': 'Zoom out', 'Celý': 'Fit', 'Priblížiť': 'Zoom in', 'Náhľad výkresu': 'Drawing preview',
+    'Potiahni obdĺžnik okolo jednej značky. Esc zruší.': 'Drag a rectangle around one symbol. Esc cancels.', 'Pracujem…': 'Working…',
+    // status and progress
+    'Načítavam stranu {0}…': 'Loading page {0}…', 'Načítavam sken v plnom rozlíšení…': 'Loading the scan at full resolution…',
+    'Výkres je veľký, spracujem ho pri {0} dpi, aby sa zmestil do pamäte prehliadača.': 'The drawing is large; it is processed at {0} dpi to fit in browser memory.',
+    'Čítačku PDF sa nepodarilo načítať. Obrázky PNG/JPG fungujú aj tak.': 'The PDF reader could not be loaded. PNG/JPG images still work.',
+    'Otváram PDF…': 'Opening PDF…', 'Načítavam obrázok…': 'Loading image…', 'Súbor sa nepodarilo otvoriť: {0}': 'Could not open the file: {0}',
+    'Stranu sa nepodarilo načítať: {0}': 'Could not load the page: {0}',
+    'Rozoberám sken…': 'Analysing the scan…', 'Nedostatok pamäte. Skús nižšie rozlíšenie.': 'Not enough memory. Try a lower resolution.',
+    'Rozbor zlyhal: {0}': 'Analysis failed: {0}', 'Pripravujem obraz…': 'Preparing the image…', 'Vektorizácia zlyhala: {0}': 'Vectorization failed: {0}',
+    'Farba {0} ({1}/{2})…': 'Colour {0} ({1}/{2})…', 'stiahnuť': 'download',
+    'Čistím škvrny…': 'Removing specks…', 'Hľadám plné plochy…': 'Finding solid areas…', 'Stenčujem čiary na osi…': 'Thinning lines to centerlines…',
+    'Skladám čiary…': 'Assembling lines…', 'Rovnám čiary…': 'Straightening lines…', 'Sledujem obrysy…': 'Tracing outlines…', 'Pripravujem hľadanie značky…': 'Preparing the symbol search…',
+    // chips
+    'PDF už obsahuje vektory, výsledok bude zo zobrazeného rastra': 'This PDF already contains vectors; the result comes from the rendered raster',
+    'Sken **{0} dpi**, spracované pri {1} dpi': 'Scan **{0} dpi**, processed at {1} dpi', 'Obrázok: rozmery v mm sú odhad ({0} dpi)': 'Image: sizes in mm are an estimate ({0} dpi)',
+    'Nerovnomerné pozadie: **vyrovnávam**': 'Uneven background: **evening out**', 'Text alebo tabuľka → **obrys**': 'Text or table → **outline**',
+    'Náčrt bez rovných čiar → **osové čiary**': 'Sketch without straight lines → **centerlines**', 'Technický výkres → **osové čiary**': 'Technical drawing → **centerlines**',
+    'Hrúbka čiary **{0} mm**': 'Line width **{0} mm**', 'Veľa šumu: škvrny do **{0} px**': 'Noisy scan: specks up to **{0} px**', 'Škvrny do **{0} px**': 'Specks up to **{0} px**',
+    'Bez narovnávania čiar': 'No line straightening', 'Plné plochy: **{0} %** atramentu': 'Solid areas: **{0} %** of the ink',
+    'Farby: **{0}** → samostatné hladiny': 'Colours: **{0}** → separate layers', 'Mierka z pečiatky **1:{0}**': 'Scale from the title block **1:{0}**',
+    // stats
+    'Formát': 'Sheet', 'Raster': 'Raster', 'Rozlíšenie': 'Resolution', 'Dĺžka čiar': 'Line length', 'Hrúbka čiary': 'Line width', 'Obrysy': 'Outlines',
+    'Plné plochy': 'Solid areas', 'Farebné hladiny': 'Colour layers', 'Natočenie skenu': 'Scan skew', '{0}° (narovnané)': '{0}° (straightened)', 'žiadne': 'none',
+    'Rozpoznané slová': 'Recognized words', 'Vrcholy': 'Vertices', 'Odstránené škvrny': 'Specks removed', 'Čas výpočtu': 'Processing time', 'Ukážkový výkres': 'Sample drawing',
+    'DXF je v milimetroch papiera. Zadaj mierku z rohovej pečiatky a dostaneš skutočné rozmery.': 'The DXF is in paper millimetres. Enter the scale from the title block to get real dimensions.',
+    'DXF bude v skutočných milimetroch: šírka listu = {0} m.': 'The DXF will be in real millimetres: sheet width = {0} m.',
+    'Mierka 1:{0} je prevzatá z rohovej pečiatky.': 'Scale 1:{0} was read from the title block.',
+    'auto (podľa pozadia)': 'auto (from background)',
+    // OCR
+    'Knižnicu na rozpoznávanie textu sa nepodarilo načítať.': 'The text recognition library could not be loaded.',
+    'Pripravujem rozpoznávanie textu ({0}/{1})…': 'Preparing text recognition ({0}/{1})…', 'Načítavam rozpoznávanie textu…': 'Loading text recognition…',
+    'Rozpoznávam text: {0} / {1} častí výkresu': 'Recognizing text: {0} / {1} parts of the drawing',
+    'Rozpoznaných {0} slov. Mierka v pečiatke: 1:{1}.': '{0} words recognized. Title block scale: 1:{1}.', 'Rozpoznaných {0} slov.': '{0} words recognized.',
+    'Rozpoznávanie textu zlyhalo: {0}': 'Text recognition failed: {0}', 'zvislý text': 'vertical text',
+    'Písmo z čiar sa nahradí skutočným textom (v DXF upraviteľný). Pozor: chybne prečítané slovo bude chybné aj vo výkrese.': 'Letter shapes are replaced with real text (editable in DXF). Note: a misread word will also be wrong in the drawing.',
+    'Čiary písma ostanú. Text sa pridá ako vyhľadávateľná vrstva do PDF a do DXF ako vypnutá hladina TEXT-OCR.': 'Letter shapes stay. The text is added as a searchable layer in the PDF and as the switched-off layer TEXT-OCR in the DXF.',
+    'Každá čiara je jedna polyčiara v osi. Vhodné na ďalšiu prácu v CAD-e.': 'Every line becomes one polyline along its centre. Best for further work in CAD.',
+    'Verná kópia tvaru: každá čiara je uzavretý obrys. Vhodné na tlač a ako podklad.': 'Faithful copy of the shape: every line is a closed outline. Best for printing and as an underlay.',
+    // symbols
+    'Značka {0}': 'Symbol {0}', '„{0}“: nájdených {1}×.': '“{0}”: found {1}×.', 'Hľadanie zlyhalo: {0}': 'Search failed: {0}', 'Odstrániť značku {0}': 'Remove symbol {0}',
+    'Značka': 'Symbol', 'Počet': 'Count', 'Otočenie [°]': 'Rotation [°]', 'Podobnosť [%]': 'Similarity [%]',
+    // downloads
+    'Sťahovanie tu nie je dostupné. Otvor stránku priamo v claude.ai alebo ju spusti na vlastnom webe.': 'Downloads are not available here. Open the page directly in claude.ai or run it on your own website.',
+    'Uložené: {0}. Rozbaľ .zip a otvor DXF v CAD-e.': 'Saved: {0}. Unzip it and open the DXF in CAD.', 'Uložené: {0}': 'Saved: {0}', 'Uloženie zrušené.': 'Saving cancelled.',
+    'Chvíľu počkaj a skús to znova.': 'Wait a moment and try again.', 'Súbor sa nepodarilo uložiť ({0}).': 'The file could not be saved ({0}).',
+    'Stiahnuté: {0} ({1})': 'Downloaded: {0} ({1})', 'Pripravujem {0}…': 'Preparing {0}…', 'Export zlyhal: {0}': 'Export failed: {0}',
+    '_osi': '_lines', '_obrys': '_outline', '_vykaz_znaciek': '_symbol_report', 'ukazka': 'sample',
+    // setup mode and fine tuning
+    'Režim nastavenia': 'Setup mode', 'Automaticky': 'Automatic', 'Ručne': 'Manual',
+    'Po načítaní súboru sa všetko nastaví podľa skenu. Potom môžeš čokoľvek ručne doladiť.': 'Everything is set from the scan when a file is loaded. You can then fine-tune anything by hand.',
+    'Nastavenia ostanú tak, ako ich nastavíš, aj pre ďalšie súbory a po opätovnom otvorení stránky.': 'Your settings stay as you set them, for the next files too and after reopening the page.',
+    'Doladenie': 'Fine-tuning', 'Ďalšie parametre': 'More parameters', '° · prázdne = automaticky': '° · empty = automatic',
+    'Tolerancia dorovnania čiar': 'Line squaring tolerance', 'Prichytenie koncov čiar': 'Line end snapping', 'Odstraňovať výbežky kratšie ako': 'Remove spurs shorter than',
+    'Hrúbka čiary vo výstupe': 'Output line width', 'podľa skenu': 'from scan', 'Citlivosť na farby': 'Colour sensitivity', 'Minimálna istota OCR': 'Minimum OCR confidence',
+    'Obnoviť predvolené hodnoty': 'Restore defaults', 'vypnuté': 'off',
+    'Názov hladiny pre farbu {0}': 'Layer name for colour {0}', 'Zahrnúť farbu {0} do výstupu': 'Include colour {0} in the output'
+  };
+  let LANG = 'sk';
+  const T = (tmpl, ...a) => {
+    let t = tmpl;
+    if (LANG === 'en') {
+      if (EN[tmpl] != null) t = EN[tmpl];
+      else { const m = /^Hľadám značku \(otočenie (\d+)°\)…$/.exec(tmpl); if (m) t = 'Searching for the symbol (rotated ' + m[1] + '°)…'; }
+    }
+    return t.replace(/\{(\d)\}/g, (_, i) => a[+i]);
+  };
+  const LOC = () => LANG === 'en' ? 'en-GB' : 'sk-SK';
+  const fmtN = n => Math.round(n).toLocaleString(LOC());
+  const fmtD = (n, d) => n.toLocaleString(LOC(), { minimumFractionDigits: d, maximumFractionDigits: d });
+  // status lines remember their message so a language switch can re-translate them
+  function status(el, tmpl, ...a) { el._msg = tmpl ? [tmpl, a] : null; el.textContent = tmpl ? T(tmpl, ...a) : ''; }
   const abs = p => new URL(p, document.baseURI).href;
   const mobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
   const MAX_AREA = mobile ? 16e6 : 100e6, MAX_SIDE = mobile ? 4096 : 16000;
@@ -272,7 +412,7 @@ canvas#view.pick { cursor: crosshair; }
     worker.onmessage = e => {
       const m = e.data, p = pending.get(m.id);
       if (!p) return;
-      if (m.t) { p.say && p.say(m.t); return; }
+      if (m.t) { p.say && p.say(T(m.t)); return; }
       pending.delete(m.id);
       if (m.err) p.reject(new Error(m.err)); else p.resolve(m.r);
     };
@@ -283,7 +423,8 @@ canvas#view.pick { cursor: crosshair; }
     const local = () => new Promise((res, rej) => setTimeout(() => {
       try {
         const b = bm.slice(0);
-        res(op === 'analyze' ? core.analyze(b, W, H) : op === 'sym' ? core.findSymbol(b, W, H, extra.box, extra.opts, say) : core.vectorize(b, W, H, extra.opts, say));
+        const sy = say ? t => say(T(t)) : null;
+        res(op === 'analyze' ? core.analyze(b, W, H) : op === 'sym' ? core.findSymbol(b, W, H, extra.box, extra.opts, sy) : core.vectorize(b, W, H, extra.opts, sy));
       } catch (e) { rej(e); }
     }, 30));
     if (!worker) return local();
@@ -295,9 +436,9 @@ canvas#view.pick { cursor: crosshair; }
   }
 
   // ---------- status ----------
-  const busy = t => { $('busyTxt').textContent = t; $('busy').hidden = false; };
+  const busy = (t, ...a) => { $('busyTxt').textContent = T(t, ...a); $('busy').hidden = false; };
   const idle = () => { $('busy').hidden = true; };
-  const msg = t => { $('msg').textContent = t || ''; };
+  const msg = (t, ...a) => status($('msg'), t, ...a);
   const tick = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
 
   // ---------- input ----------
@@ -308,7 +449,7 @@ canvas#view.pick { cursor: crosshair; }
     g.strokeStyle = g.fillStyle = '#000'; g.lineWidth = 3; g.lineCap = 'butt';
     const L = (...p) => { g.beginPath(); g.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) g.lineTo(p[i], p[i + 1]); g.stroke(); };
     g.strokeRect(40, 40, 1420, 880);
-    L(140, 300, 1180, 300); L(140, 420, 1180, 420);            // prívod, spiatočka
+    g.strokeStyle = '#D62828'; L(140, 300, 1180, 300); g.strokeStyle = '#1D4ED8'; L(140, 420, 1180, 420); g.strokeStyle = '#000';   // prívod, spiatočka
     L(140, 300, 140, 640); L(140, 640, 520, 640); L(1180, 300, 1180, 420);
     g.setLineDash([26, 10, 4, 10]); L(100, 360, 1260, 360); g.setLineDash([]);
     g.beginPath(); g.arc(420, 300, 34, 0, 6.2832); g.fillStyle = '#fff'; g.fill(); g.stroke();   // čerpadlo
@@ -335,9 +476,10 @@ canvas#view.pick { cursor: crosshair; }
   }
 
   function resetForNewSource() {
+    $('skewIn').value = '';
     S.ocr = null; S.ocrRun++; S.syms = []; S.sel = null; S.pendingBox = null; S.manualScale = false; S.fresh = true;
     $('scale').value = 1; $('symForm').hidden = true; setPicking(false);
-    $('ocrMsg').textContent = ''; $('ocrProg').hidden = true; $('txtBtn').disabled = true; $('showText').disabled = true;
+    status($('ocrMsg'), ''); status($('symMsg'), ''); $('ocrProg').hidden = true; $('txtBtn').disabled = true; $('showText').disabled = true;
     renderSyms();
   }
 
@@ -351,7 +493,7 @@ canvas#view.pick { cursor: crosshair; }
     }
     S.hist = hist;
     fit();
-    if ($('autoOn').checked) autoSetup(); else process();
+    if (S.setup === 'auto') autoSetup(); else process();
   }
 
   // Looks at the PDF page: resolution of an embedded scan, or whether it is already vector.
@@ -419,7 +561,7 @@ canvas#view.pick { cursor: crosshair; }
   }
 
   async function renderPdfPage(n) {
-    busy('Načítavam stranu ' + n + '…'); await tick();
+    busy('Načítavam stranu {0}…', n); await tick();
     resetForNewSource();
     const page = await S.pdf.getPage(n), v1 = page.getViewport({ scale: 1 });
     const info = await inspectPage(page, v1);
@@ -435,7 +577,7 @@ canvas#view.pick { cursor: crosshair; }
         if (c) {
           const eff = Math.round(native * s), note = $('dpiNote');
           note.hidden = eff >= want - 1;
-          note.textContent = 'Výkres je veľký, spracujem ho pri ' + eff + ' dpi, aby sa zmestil do pamäte prehliadača.';
+          status(note, 'Výkres je veľký, spracujem ho pri {0} dpi, aby sa zmestil do pamäte prehliadača.', eff);
           setSource(c, native * c.width / info.img.w, S.base, false);
           return;
         }
@@ -448,7 +590,7 @@ canvas#view.pick { cursor: crosshair; }
     await page.render({ canvasContext: g, viewport: vp, background: '#fff' }).promise;
     const eff = Math.round(sc * 72), note = $('dpiNote');
     note.hidden = eff >= want - 1;
-    note.textContent = 'Výkres je veľký, spracujem ho pri ' + eff + ' dpi, aby sa zmestil do pamäte prehliadača.';
+    status(note, 'Výkres je veľký, spracujem ho pri {0} dpi, aby sa zmestil do pamäte prehliadača.', eff);
     setSource(c, sc * 72, S.base, false);
   }
 
@@ -459,7 +601,7 @@ canvas#view.pick { cursor: crosshair; }
     $('fname').textContent = file.name;
     try {
       if (/pdf$/i.test(file.type) || /\.pdf$/i.test(file.name)) {
-        if (!window.pdfjsLib) throw new Error('Čítačku PDF sa nepodarilo načítať. Obrázky PNG/JPG fungujú aj tak.');
+        if (!window.pdfjsLib) throw new Error(T('Čítačku PDF sa nepodarilo načítať. Obrázky PNG/JPG fungujú aj tak.'));
         busy('Otváram PDF…'); await tick();
         pdfjsLib.GlobalWorkerOptions.workerSrc = abs('vendor/pdfjs/pdf.worker.min.js');
         S.pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer(), isOffscreenCanvasSupported: false, canvasMaxAreaInBytes: 2147483647 }).promise;
@@ -479,7 +621,7 @@ canvas#view.pick { cursor: crosshair; }
         const sel = $('dpi').value;
         setSource(c, (sel === 'auto' ? 300 : +sel) * sc, S.base, false);
       }
-    } catch (e) { idle(); msg('Súbor sa nepodarilo otvoriť: ' + (e && e.message || e)); }
+    } catch (e) { idle(); msg('Súbor sa nepodarilo otvoriť: {0}', e && e.message || e); }
   }
 
   // ---------- binarization ----------
@@ -507,7 +649,113 @@ canvas#view.pick { cursor: crosshair; }
     return { B, cw, ch, sx: cw / c.width, sy: ch / c.height, range: hi - lo };
   }
 
-  function binarize(thrOverride) {
+  // ---------- colours ----------
+  const HUE_BINS = 36;
+  let CHROMA = 55;
+  // ink pixel classification: 0 = paper, 1 = black/grey ink, 2 + hue bin = coloured ink
+  function classifyPx(r, g, b, lum, dark) {
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), ch = mx - mn;
+    if (ch >= CHROMA && mx > 60 && lum < 246) {
+      let h;
+      if (mx === r) h = ((g - b) / ch + 6) % 6; else if (mx === g) h = (b - r) / ch + 2; else h = (r - g) / ch + 4;
+      return 2 + Math.min(HUE_BINS - 1, Math.floor(h * HUE_BINS / 6));
+    }
+    return dark ? 1 : 0;
+  }
+  // Colour groups from a hue histogram of coloured ink.
+  function clustersFrom(hist, sums, sumsSat, inkTotal) {
+    let chromatic = 0;
+    for (const v of hist) chromatic += v;
+    if (chromatic < Math.max(400, 0.002 * inkTotal)) return [];
+    const at = i => hist[(i + HUE_BINS) % HUE_BINS];
+    const sm = i => at(i - 1) + 2 * at(i) + at(i + 1);
+    const peaks = [];
+    for (let i = 0; i < HUE_BINS; i++) {
+      const v = sm(i);
+      if (v <= 0 || v < sm(i - 1) || v < sm(i + 1) || (v === sm(i - 1) && peaks.some(p => p.bin === (i - 1 + HUE_BINS) % HUE_BINS))) continue;
+      let mass = 0; for (let k = -2; k <= 2; k++) mass += at(i + k);
+      if (mass >= Math.max(0.03 * chromatic, 150)) peaks.push({ bin: i, mass });
+    }
+    peaks.sort((p, q) => q.mass - p.mass);
+    const keep = [];
+    const dist = (a, b) => { const d = Math.abs(a - b) % HUE_BINS; return Math.min(d, HUE_BINS - d); };
+    for (const p of peaks) if (keep.length < 7 && keep.every(k => dist(k.bin, p.bin) > 3)) keep.push(p);
+    const map = new Int8Array(HUE_BINS);
+    const cl = keep.map(k => ({ bins: [], count: 0, r: 0, g: 0, b: 0, n: 0, rs: 0, gs: 0, bs: 0, ns: 0 }));
+    for (let i = 0; i < HUE_BINS; i++) {
+      let best = 0;
+      keep.forEach((k, j) => { if (dist(k.bin, i) < dist(keep[best].bin, i)) best = j; });
+      map[i] = best;
+      const c = cl[best];
+      c.count += hist[i]; c.r += sums[3 * i]; c.g += sums[3 * i + 1]; c.b += sums[3 * i + 2]; c.n += hist[i];
+      c.rs += sumsSat[4 * i]; c.gs += sumsSat[4 * i + 1]; c.bs += sumsSat[4 * i + 2]; c.ns += sumsSat[4 * i + 3];
+    }
+    const out = cl.map(c => {
+      const rgb = c.ns > 50 ? [c.rs / c.ns, c.gs / c.ns, c.bs / c.ns] : [c.r / c.n, c.g / c.n, c.b / c.n];
+      return { rgb: rgb.map(Math.round), count: c.count, key: colorKey(rgb) };
+    });
+    return { list: out, map };
+  }
+  function colorKey(rgb) {
+    const [r, g, b] = rgb.map(v => v / 255), mx = Math.max(r, g, b), mn = Math.min(r, g, b), ch = mx - mn;
+    if (ch < 0.12) return mx < 0.35 ? 'black' : 'gray';
+    let h;
+    if (mx === r) h = ((g - b) / ch + 6) % 6; else if (mx === g) h = (b - r) / ch + 2; else h = (r - g) / ch + 4;
+    h *= 60;
+    if (h >= 15 && h < 45 && mx < 0.6) return 'brown';
+    if (h < 15 || h >= 345) return 'red';
+    if (h < 45) return 'orange';
+    if (h < 70) return 'yellow';
+    if (h < 165) return 'green';
+    if (h < 200) return 'cyan';
+    if (h < 255) return 'blue';
+    if (h < 290) return 'purple';
+    return 'magenta';
+  }
+  const COLOR_NAMES = {
+    sk: { black: 'čierna', gray: 'sivá', red: 'červená', orange: 'oranžová', yellow: 'žltá', green: 'zelená', cyan: 'tyrkysová', blue: 'modrá', purple: 'fialová', magenta: 'ružová', brown: 'hnedá' },
+    en: { black: 'black', gray: 'grey', red: 'red', orange: 'orange', yellow: 'yellow', green: 'green', cyan: 'cyan', blue: 'blue', purple: 'purple', magenta: 'magenta', brown: 'brown' }
+  };
+  const colorName = k => COLOR_NAMES[LANG][k] || k;
+  // AutoCAD colour index: nearest of the standard palette
+  let ACI = null;
+  function aciOf(rgb) {
+    if (!ACI) {
+      ACI = [[1, 255, 0, 0], [2, 255, 255, 0], [3, 0, 255, 0], [4, 0, 255, 255], [5, 0, 0, 255], [6, 255, 0, 255]];
+      const vals = [1, 0.65, 0.5, 0.3, 0.15];
+      for (let idx = 10; idx < 250; idx++) {
+        const hue = Math.floor((idx - 10) / 10) * 15, sub = idx % 10, sat = sub % 2 ? 0.5 : 1, val = vals[sub >> 1];
+        const f = (n) => { const k = (n + hue / 60) % 6; return val - val * sat * Math.max(0, Math.min(k, 4 - k, 1)); };
+        ACI.push([idx, f(5) * 255, f(3) * 255, f(1) * 255]);
+      }
+    }
+    const k = colorKey(rgb);
+    if (k === 'black') return 7;
+    if (k === 'gray') return 8;
+    let best = 7, bd = 1e9;
+    for (const [i, r, g, b] of ACI) { const d = (r - rgb[0]) ** 2 + (g - rgb[1]) ** 2 + (b - rgb[2]) ** 2; if (d < bd) { bd = d; best = i; } }
+    return best;
+  }
+  function detectColors(c, thr) {
+    const w = c.width, h = c.height, g = c.getContext('2d', { willReadFrequently: true });
+    const hist = new Float64Array(HUE_BINS), sums = new Float64Array(3 * HUE_BINS), sat = new Float64Array(4 * HUE_BINS);
+    let ink = 0;
+    for (let y = 0; y < h; y += 3) {
+      const d = g.getImageData(0, y, w, 1).data;
+      for (let x = 0; x < w; x += 2) {
+        const i = 4 * x, r = d[i], gg = d[i + 1], b = d[i + 2], lum = (r * 77 + gg * 150 + b * 29) >> 8;
+        const k = classifyPx(r, gg, b, lum, lum <= thr);
+        if (!k) continue;
+        ink++;
+        if (k >= 2) { const bin = k - 2; hist[bin]++; sums[3 * bin] += r; sums[3 * bin + 1] += gg; sums[3 * bin + 2] += b;
+          if (Math.max(r, gg, b) - Math.min(r, gg, b) > 110) { sat[4 * bin] += r; sat[4 * bin + 1] += gg; sat[4 * bin + 2] += b; sat[4 * bin + 3]++; } }
+      }
+    }
+    const res = clustersFrom(hist, sums, sat, ink);
+    return res.list || [];
+  }
+
+  function binarize(thrOverride, colorMode) {
     const c = S.src, w = c.width, h = c.height, W = w + 2, H = h + 2;
     const tv = thrOverride != null ? thrOverride : +$('thr').value;
     const flat = $('flat').checked;
@@ -516,32 +764,154 @@ canvas#view.pick { cursor: crosshair; }
     const g = c.getContext('2d', { willReadFrequently: true });
     const bg = flat ? (S.bgMap || (S.bgMap = backgroundMap(c))) : null;
     const ratio = tv === 0 ? 0.72 : tv / 255;
+    const labels = colorMode ? new Uint8Array(W * H) : null;
+    const hist = new Float64Array(HUE_BINS), sums = new Float64Array(3 * HUE_BINS), sat = new Float64Array(4 * HUE_BINS);
+    let inkTotal = 0;
     for (let y0 = 0; y0 < h; y0 += 512) {
       const rows = Math.min(512, h - y0), d = g.getImageData(0, y0, w, rows).data;
       for (let y = 0; y < rows; y++) {
         let o = (y0 + y + 1) * W + 1, i = y * w * 4;
-        if (!bg) {
-          for (let x = 0; x < w; x++, i += 4, o++) if (((d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8) <= thr) bm[o] = 1;
-        } else {
-          const by = Math.min(bg.ch - 1, Math.max(0, (y0 + y) * bg.sy - 0.5)), y1 = Math.floor(by), fy = by - y1, y2 = Math.min(bg.ch - 1, y1 + 1);
-          for (let x = 0; x < w; x++, i += 4, o++) {
+        let y1 = 0, fy = 0, y2 = 0;
+        if (bg) { const by = Math.min(bg.ch - 1, Math.max(0, (y0 + y) * bg.sy - 0.5)); y1 = Math.floor(by); fy = by - y1; y2 = Math.min(bg.ch - 1, y1 + 1); }
+        for (let x = 0; x < w; x++, i += 4, o++) {
+          const lum = (d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8;
+          let dark;
+          if (!bg) dark = lum <= thr;
+          else {
             const bx = Math.min(bg.cw - 1, Math.max(0, x * bg.sx - 0.5)), x1 = Math.floor(bx), fx = bx - x1, x2 = Math.min(bg.cw - 1, x1 + 1);
-            const b = (bg.B[y1 * bg.cw + x1] * (1 - fx) + bg.B[y1 * bg.cw + x2] * fx) * (1 - fy) + (bg.B[y2 * bg.cw + x1] * (1 - fx) + bg.B[y2 * bg.cw + x2] * fx) * fy;
-            if (((d[i] * 77 + d[i + 1] * 150 + d[i + 2] * 29) >> 8) <= b * ratio) bm[o] = 1;
+            const bv = (bg.B[y1 * bg.cw + x1] * (1 - fx) + bg.B[y1 * bg.cw + x2] * fx) * (1 - fy) + (bg.B[y2 * bg.cw + x1] * (1 - fx) + bg.B[y2 * bg.cw + x2] * fx) * fy;
+            dark = lum <= bv * ratio;
+          }
+          if (!labels) { if (dark) bm[o] = 1; continue; }
+          const k = classifyPx(d[i], d[i + 1], d[i + 2], lum, dark);
+          if (!k) continue;
+          inkTotal++;
+          labels[o] = k | (dark ? 128 : 0);
+          if (k >= 2) {
+            const bin = k - 2; hist[bin]++; sums[3 * bin] += d[i]; sums[3 * bin + 1] += d[i + 1]; sums[3 * bin + 2] += d[i + 2];
+            if (Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]) > 110) { sat[4 * bin] += d[i]; sat[4 * bin + 1] += d[i + 1]; sat[4 * bin + 2] += d[i + 2]; sat[4 * bin + 3]++; }
           }
         }
       }
     }
-    return { bm, W, H, thr, flat };
+    if (!labels) return { bm, W, H, thr, flat };
+    const cr = clustersFrom(hist, sums, sat, inkTotal);
+    const list = cr.list || [];
+    // labels: 1 = black, 2.. = colour groups (index into clusters = label - 1)
+    const clusters = [{ key: 'black', rgb: [0, 0, 0], count: 0 }].concat(list);
+    for (let i = 0, N = W * H; i < N; i++) {
+      const v = labels[i]; if (!v) continue;
+      const k = v & 127, dark = v & 128;
+      if (k === 1) { labels[i] = 1 | dark; continue; }
+      if (!list.length) { labels[i] = dark ? 1 | 128 : 0; continue; }
+      labels[i] = (2 + cr.map[k - 2]) | dark;
+    }
+    // colour fringes (scanner misregistration) along black lines: a coloured pixel needs coloured neighbours
+    const offs = [-W - 1, -W, -W + 1, -1, 1, W - 1, W, W + 1];
+    const L = i => labels[i] & 127;
+    const run3 = (i, k, st) => (L(i - st) === k && (L(i + st) === k || L(i - 2 * st) === k)) || (L(i + st) === k && L(i + 2 * st) === k);
+    const nearBlack = i => { for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (L(i + dy * W + dx) === 1) return true; return false; };
+    for (let y = 2; y < H - 2; y++) for (let x = 2; x < W - 2; x++) {
+      const i = y * W + x, v = labels[i], k = v & 127;
+      if (k < 2) continue;
+      let same = 0;
+      for (let j = 0; j < 8; j++) if (L(i + offs[j]) === k) same++;
+      // a thin coloured edge (1-2 px) hugging a black line is a fringe, not a coloured line
+      const thin = !(run3(i, k, 1) && run3(i, k, W));
+      if (same < 3 || (thin && nearBlack(i))) labels[i] = v & 128 ? 1 | 128 : 0;
+    }
+    for (let i = 0, N = W * H; i < N; i++) { if (labels[i] & 127) { bm[i] = 1; const k = labels[i] & 127; clusters[k - 1].count++; } }
+    const used = clusters.filter(c => c.count > 50);
+    // drop empty groups and renumber
+    if (used.length !== clusters.length) {
+      const remap = new Uint8Array(clusters.length + 1);
+      clusters.forEach((c, i) => { remap[i + 1] = used.indexOf(c) + 1; });
+      for (let i = 0, N = W * H; i < N; i++) if (labels[i] & 127) labels[i] = remap[labels[i] & 127];
+    }
+    return { bm, W, H, thr, flat, labels, clusters: used.length > 1 ? used : null };
   }
+  function thrLabel(b) {
+    const v = +$('thr').value;
+    $('thrVal').textContent = v === 0 ? (b.flat ? T('auto (podľa pozadia)') : 'auto (' + b.thr + ')') : String(b.thr);
+  }
+  // Several colour results -> one result with a colour index per polyline.
+  function mergeParts(parts, clusters) {
+    parts.sort((p, q) => p.ci - q.ci);
+    const cat = (key) => { let n = 0; for (const p of parts) n += p.r[key].length; return n; };
+    const ld = new Float32Array(cat('linesData')), fd = new Float32Array(cat('fillsData'));
+    const nl = parts.reduce((a, p) => a + p.r.linesOff.length - 1, 0), nf = parts.reduce((a, p) => a + p.r.fillsOff.length - 1, 0);
+    const lo = new Int32Array(nl + 1), fo = new Int32Array(nf + 1), lc = new Uint8Array(nl), lcol = new Uint8Array(nl), fcol = new Uint8Array(nf);
+    let lp = 0, fp = 0, li = 0, fi = 0;
+    const colors = [];
+    let removed = 0, length = 0, ms = 0, snapped = 0, textErased = 0;
+    const first = parts.slice().sort((p, q) => clusters[q.ci].count - clusters[p.ci].count)[0].r;
+    parts.forEach((p, idx) => {
+      const r = p.r, cl = clusters[p.ci];
+      colors.push({ key: cl.key, rgb: cl.key === 'black' ? [0, 0, 0] : cl.rgb, aci: aciOf(cl.key === 'black' ? [0, 0, 0] : cl.rgb), sw: r.sw, count: cl.count });
+      ld.set(r.linesData, lp); fd.set(r.fillsData, fp);
+      for (let i = 0; i + 1 < r.linesOff.length; i++) { lo[li + 1] = r.linesOff[i + 1] + lp / 2; lc[li] = r.linesClosed[i]; lcol[li] = idx; li++; }
+      for (let i = 0; i + 1 < r.fillsOff.length; i++) { fo[fi + 1] = r.fillsOff[i + 1] + fp / 2; fcol[fi] = idx; fi++; }
+      lp += r.linesData.length; fp += r.fillsData.length;
+      removed += r.removed; length += r.length; ms += r.ms; snapped += r.snapped || 0; textErased += r.textErased || 0;
+    });
+    return Object.assign({}, first, { linesData: ld, linesOff: lo, linesClosed: lc, fillsData: fd, fillsOff: fo,
+      linesColor: lcol, fillsColor: fcol, colors, removed, length, ms, snapped, textErased });
+  }
+  function nameColorLayers(res) {
+    const used = {};
+    for (const c of res.colors) {
+      const pref = S.colorPrefs[c.key] || {};
+      let n = (pref.name || colorName(c.key)).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9_-]+/g, '_').slice(0, 28) || 'FARBA';
+      used[n] = (used[n] || 0) + 1;
+      if (used[n] > 1) n += '-' + used[n];
+      c.layer = n; c.fillLayer = n + (LANG === 'en' ? '-FILLS' : '-PLOCHY');
+    }
+  }
+  function buildPaths(res) {
+    const parts = [];
+    const nC = res.colors ? res.colors.length : 1;
+    for (let c = 0; c < nC; c++) parts.push({ f: new Path2D(), l: new Path2D(), rgb: res.colors ? res.colors[c].rgb : null, sw: res.colors ? res.colors[c].sw : res.sw, key: res.colors ? res.colors[c].key : null });
+    let d = res.fillsData, o = res.fillsOff;
+    for (let i = 0; i + 1 < o.length; i++) {
+      const f = parts[res.fillsColor ? res.fillsColor[i] : 0].f;
+      let s = o[i]; f.moveTo(d[2 * s], d[2 * s + 1]); for (s++; s < o[i + 1]; s++) f.lineTo(d[2 * s], d[2 * s + 1]); f.closePath();
+    }
+    d = res.linesData; o = res.linesOff;
+    for (let i = 0; i + 1 < o.length; i++) {
+      const l = parts[res.linesColor ? res.linesColor[i] : 0].l;
+      let s = o[i]; l.moveTo(d[2 * s], d[2 * s + 1]); for (s++; s < o[i + 1]; s++) l.lineTo(d[2 * s], d[2 * s + 1]); if (res.linesClosed[i]) l.closePath();
+    }
+    S.paths = parts;
+  }
+  function renderColors() {
+    const ul = $('colorList'); ul.innerHTML = '';
+    const r = S.res;
+    if (!r || !r.colors) return;
+    nameColorLayers(r);
+    const tot = r.colors.reduce((a, c) => a + c.count, 0) || 1;
+    for (const c of r.colors) {
+      const li = document.createElement('li');
+      const pref = S.colorPrefs[c.key] || (S.colorPrefs[c.key] = {});
+      const i = document.createElement('i'); i.style.background = 'rgb(' + c.rgb.join(',') + ')'; i.style.border = '1px solid var(--line)';
+      i.title = colorName(c.key);
+      const n = document.createElement('input'); n.type = 'text'; n.value = c.layer; n.setAttribute('aria-label', T('Názov hladiny pre farbu {0}', colorName(c.key)));
+      n.onchange = () => { pref.name = n.value.trim(); nameColorLayers(S.res); renderColors(); };
+      const b = document.createElement('b'); b.textContent = Math.max(1, Math.round(100 * c.count / tot)) + ' %';
+      const on = document.createElement('input'); on.type = 'checkbox'; on.checked = !pref.off;
+      on.setAttribute('aria-label', T('Zahrnúť farbu {0} do výstupu', colorName(c.key)));
+      on.onchange = () => { pref.off = !on.checked; draw(); };
+      li.append(i, n, b, on); ul.appendChild(li);
+    }
+  }
+  const baseName = () => S.isSample ? T('ukazka') : S.name;
 
   // ---------- automatic setup ----------
-  function chip(text, warn) { return { text, warn: !!warn }; }
+  function chip(text, args, warn) { return { text, args: args || [], warn: !!warn }; }
   function renderChips(list) {
     const ul = $('autoChips'); ul.innerHTML = '';
     for (const c of list) {
       const li = document.createElement('li'); if (c.warn) li.className = 'warn';
-      const parts = c.text.split('**');
+      const parts = T(c.text, ...c.args.map(a => typeof a === 'function' ? a() : a)).split('**');
       parts.forEach((p, i) => { if (i % 2) { const b = document.createElement('b'); b.textContent = p; li.appendChild(b); } else if (p) li.appendChild(document.createTextNode(p)); });
       ul.appendChild(li);
     }
@@ -560,14 +930,14 @@ canvas#view.pick { cursor: crosshair; }
     let b;
     try { b = binarize(0); } catch (e) { idle(); msg('Nedostatok pamäte. Skús nižšie rozlíšenie.'); return; }
     let st;
-    try { st = await job('analyze', b.bm, b.W, b.H, {}, null); } catch (e) { if (run === S.run) { idle(); msg('Rozbor zlyhal: ' + e.message); } return; }
+    try { st = await job('analyze', b.bm, b.W, b.H, {}, null); } catch (e) { if (run === S.run) { idle(); msg('Rozbor zlyhal: {0}', e.message); } return; }
     if (run !== S.run) return;
     const chips = [];
     const mm = v => fmtD(v * 25.4 / S.dpi, 2);
     if (S.pdf) {
-      if (S.vectorPdf) chips.push(chip('PDF už obsahuje vektory, výsledok bude zo zobrazeného rastra', true));
-      else if (S.nativeDpi) chips.push(chip('Sken **' + Math.round(S.nativeDpi) + ' dpi**, spracované pri ' + Math.round(S.dpi) + ' dpi'));
-    } else if (!S.isSample) chips.push(chip('Obrázok: rozmery v mm sú odhad (' + Math.round(S.dpi) + ' dpi)', true));
+      if (S.vectorPdf) chips.push(chip('PDF už obsahuje vektory, výsledok bude zo zobrazeného rastra', [], true));
+      else if (S.nativeDpi) chips.push(chip('Sken **{0} dpi**, spracované pri {1} dpi', [Math.round(S.nativeDpi), Math.round(S.dpi)]));
+    } else if (!S.isSample) chips.push(chip('Obrázok: rozmery v mm sú odhad ({0} dpi)', [Math.round(S.dpi)], true));
     if (uneven) chips.push(chip('Nerovnomerné pozadie: **vyrovnávam**'));
     const textDoc = st.letterFrac > 0.55 && st.lineFrac < 0.25;
     const sketch = st.lineFrac < 0.06 && !textDoc;
@@ -576,10 +946,11 @@ canvas#view.pick { cursor: crosshair; }
     else if (sketch) { S.mode = 'center'; kind = 'Náčrt bez rovných čiar → **osové čiary**'; }
     else { S.mode = 'center'; kind = 'Technický výkres → **osové čiary**'; }
     chips.push(chip(kind));
-    chips.push(chip('Hrúbka čiary **' + mm(st.sw) + ' mm**'));
+    const swv = st.sw;
+    chips.push(chip('Hrúbka čiary **{0} mm**', [() => mm(swv)]));
     let turd = Math.max(2, Math.min(10, Math.round(st.sw * st.sw * 0.6)));
-    if (st.specksPerMp > 300) { turd = Math.min(16, Math.round(turd * 1.6)); chips.push(chip('Veľa šumu: škvrny do **' + turd + ' px**')); }
-    else chips.push(chip('Škvrny do **' + turd + ' px**'));
+    if (st.specksPerMp > 300) { turd = Math.min(16, Math.round(turd * 1.6)); chips.push(chip('Veľa šumu: škvrny do **{0} px**', [turd])); }
+    else chips.push(chip('Škvrny do **{0} px**', [turd]));
     $('turd').value = turd; $('turdVal').textContent = turd + ' px';
     let eps = Math.max(0.6, Math.min(2.2, S.dpi / 300)) + (uneven || sketch ? 0.3 : 0);
     eps = Math.round(eps * 10) / 10;
@@ -588,7 +959,10 @@ canvas#view.pick { cursor: crosshair; }
     $('prune').checked = true;
     $('straight').checked = !sketch;
     if (sketch) chips.push(chip('Bez narovnávania čiar'));
-    if (st.solidFrac > 0.02) chips.push(chip('Plné plochy: **' + Math.round(st.solidFrac * 100) + ' %** atramentu'));
+    if (st.solidFrac > 0.02) chips.push(chip('Plné plochy: **{0} %** atramentu', [Math.round(st.solidFrac * 100)]));
+    const cols = detectColors(S.src, b.thr);
+    $('colorOn').checked = cols.length > 0;
+    if (cols.length) chips.push(chip('Farby: **{0}** → samostatné hladiny', [() => cols.map(c => colorName(c.key)).join(', ')]));
     S.auto = { chips, stats: st };
     renderChips(chips);
     modeUI();
@@ -602,27 +976,44 @@ canvas#view.pick { cursor: crosshair; }
     busy('Pripravujem obraz…'); await tick();
     if (run !== S.run) return;
     let b;
-    try { b = binarize(); } catch (e) { idle(); msg('Nedostatok pamäte. Skús nižšie rozlíšenie.'); return; }
-    $('thrVal').textContent = +$('thr').value === 0 ? (b.flat ? 'auto (podľa pozadia)' : 'auto (' + b.thr + ')') : String(b.thr);
+    try { b = binarize(null, $('colorOn').checked); } catch (e) { idle(); msg('Nedostatok pamäte. Skús nižšie rozlíšenie.'); return; }
+    thrLabel(b);
     S.bm = b.bm; S.W = b.W; S.H = b.H;
     const straight = $('straight').checked;
+    const fine = fineOpts();
     const opts = { mode: S.mode, turd: +$('turd').value, eps: +$('eps').value, keepFills: $('keepFills').checked, prune: $('prune').checked,
-      deskew: straight, ortho: straight, textBoxes: S.tmode === 'replace' && S.ocr ? S.ocr.words.filter(w => w.conf >= 70).map(w => ({ x: w.x, y: w.y, w: w.w, h: w.h })) : null };
+      deskew: straight || fine.forceSkew != null, ortho: straight, orthoTol: fine.tol, snapR: fine.snapR, spurLen: fine.spurLen,
+      forceSkew: fine.forceSkew != null ? fine.forceSkew : undefined, textBoxes: S.tmode === 'replace' && S.ocr ? S.ocr.words.map(w => ({ x: w.x, y: w.y, w: w.w, h: w.h })) : null };
     let res;
-    try { res = await job('vec', b.bm, b.W, b.H, { opts }, t => { if (run === S.run) busy(t); }); }
-    catch (e) { if (run === S.run) { idle(); msg('Vektorizácia zlyhala: ' + e.message); } return; }
+    const say = t => { if (run === S.run) busy(t); };
+    try {
+      if (b.clusters && b.clusters.length > 1) {
+        // one vectorization per colour; the largest sets the skew for the others
+        const parts = [];
+        let skew = null;
+        const order = b.clusters.map((c, i) => i).sort((p, q) => b.clusters[q].count - b.clusters[p].count);
+        for (const ci of order) {
+          const cl = b.clusters[ci], lab = ci + 1, bmc = new Uint8Array(b.W * b.H);
+          for (let i = 0; i < bmc.length; i++) if ((b.labels[i] & 127) === lab) bmc[i] = 1;
+          busy('Farba {0} ({1}/{2})…', colorName(cl.key), parts.length + 1, b.clusters.length);
+          const o2 = Object.assign({}, opts, skew === null ? {} : { forceSkew: skew, deskew: true });
+          const r = await job('vec', bmc, b.W, b.H, { opts: o2 }, say);
+          if (run !== S.run) return;
+          if (skew === null) skew = straight || fine.forceSkew != null ? r.skew : 0;
+          parts.push({ ci, r });
+        }
+        res = mergeParts(parts, b.clusters);
+      } else res = await job('vec', b.bm, b.W, b.H, { opts }, say);
+    } catch (e) { if (run === S.run) { idle(); msg('Vektorizácia zlyhala: {0}', e.message); } return; }
     if (run !== S.run) return;
     res.dpi = S.dpi;
     S.res = res;
-    const f = new Path2D(), l = new Path2D();
-    let d = res.fillsData, o = res.fillsOff;
-    for (let i = 0; i + 1 < o.length; i++) { let s = o[i]; f.moveTo(d[2 * s], d[2 * s + 1]); for (s++; s < o[i + 1]; s++) f.lineTo(d[2 * s], d[2 * s + 1]); f.closePath(); }
-    d = res.linesData; o = res.linesOff;
-    for (let i = 0; i + 1 < o.length; i++) { let s = o[i]; l.moveTo(d[2 * s], d[2 * s + 1]); for (s++; s < o[i + 1]; s++) l.lineTo(d[2 * s], d[2 * s + 1]); if (res.linesClosed[i]) l.closePath(); }
-    S.paths = { f, l };
+    buildPaths(res);
+    renderColors();
+    $('skewVal').textContent = fine.forceSkew != null ? fmtD(fine.forceSkew, 2) + '°' : 'auto' + (res.skew ? ' (' + fmtD(res.skew, 2) + '°)' : '');
     idle(); stats(); draw();
     document.querySelectorAll('[data-fmt]').forEach(b => { b.disabled = false; });
-    ['szPdf', 'szSvg', 'szDxf'].forEach(id => { $(id).textContent = id === 'szDxf' && inArtifact ? '.zip' : 'stiahnuť'; });
+    ['szPdf', 'szSvg', 'szDxf'].forEach(id => { $(id)._sz = null; $(id).textContent = id === 'szDxf' && inArtifact ? '.zip' : T('stiahnuť'); });
     if (S.fresh) {
       S.fresh = false;
       if ($('ocrAuto').checked) runOCR();
@@ -639,20 +1030,21 @@ canvas#view.pick { cursor: crosshair; }
     if (S.mode === 'center') rows.push(['Osové čiary', fmtN(nL)], ['Plné plochy', fmtN(nF)], ['Dĺžka čiar', fmtD(r.length * 25.4 / r.dpi / 1000, 1) + ' m'],
       ['Hrúbka čiary', '≈ ' + fmtD(r.sw * 25.4 / r.dpi, 2) + ' mm']);
     else rows.push(['Obrysy', fmtN(nF)]);
-    if ($('straight').checked) rows.push(['Natočenie skenu', r.skew ? fmtD(r.skew, 2) + '° (narovnané)' : 'žiadne']);
+    if (r.colors) rows.push(['Farebné hladiny', String(r.colors.length)]);
+    if ($('straight').checked) rows.push(['Natočenie skenu', r.skew ? T('{0}° (narovnané)', fmtD(r.skew, 2)) : T('žiadne')]);
     if (S.ocr) rows.push(['Rozpoznané slová', fmtN(S.ocr.words.length)]);
     rows.push(['Vrcholy', fmtN(pts)], ['Odstránené škvrny', fmtN(r.removed)], ['Čas výpočtu', fmtD(r.ms / 1000, 1) + ' s']);
     const dl = $('stats'); dl.innerHTML = '';
-    for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; dl.append(dt, dd); }
-    $('tag').textContent = S.isSample ? 'Ukážkový výkres' : S.name;
+    for (const [k, v] of rows) { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = T(k); dd.textContent = v; dl.append(dt, dd); }
+    $('tag').textContent = S.isSample ? T('Ukážkový výkres') : S.name;
     scaleHint();
   }
   function scaleHint() {
     const n = Math.max(1, +$('scale').value || 1), r = S.res;
     if (!r) return;
     const mmW = r.w * 25.4 / r.dpi * n;
-    $('scaleHint').textContent = n === 1 ? 'DXF je v milimetroch papiera. Zadaj mierku z rohovej pečiatky a dostaneš skutočné rozmery.'
-      : 'DXF bude v skutočných milimetroch: šírka listu = ' + fmtD(mmW / 1000, 2) + ' m.' + (S.scaleFrom ? ' ' + S.scaleFrom : '');
+    $('scaleHint').textContent = n === 1 ? T('DXF je v milimetroch papiera. Zadaj mierku z rohovej pečiatky a dostaneš skutočné rozmery.')
+      : T('DXF bude v skutočných milimetroch: šírka listu = {0} m.', fmtD(mmW / 1000, 2)) + (S.scaleFrom ? ' ' + T('Mierka 1:{0} je prevzatá z rohovej pečiatky.', S.scaleFrom) : '');
   }
 
   // ---------- coordinates: scan pixels <-> straightened vector space ----------
@@ -678,7 +1070,7 @@ canvas#view.pick { cursor: crosshair; }
     if (tessLoad) return tessLoad;
     tessLoad = new Promise((res, rej) => {
       const s = document.createElement('script'); s.src = 'vendor/tesseract/tesseract.min.js';
-      s.onload = () => res(); s.onerror = () => { tessLoad = null; rej(new Error('Knižnicu na rozpoznávanie textu sa nepodarilo načítať.')); };
+      s.onload = () => res(); s.onerror = () => { tessLoad = null; rej(new Error(T('Knižnicu na rozpoznávanie textu sa nepodarilo načítať.'))); };
       document.head.appendChild(s);
     });
     return tessLoad;
@@ -688,7 +1080,7 @@ canvas#view.pick { cursor: crosshair; }
     if (pool && pool.length >= n) return pool.slice(0, n);
     pool = pool || [];
     while (pool.length < n) {
-      say('Pripravujem rozpoznávanie textu (' + (pool.length + 1) + '/' + n + ')…');
+      say('Pripravujem rozpoznávanie textu ({0}/{1})…', pool.length + 1, n);
       const w = await Tesseract.createWorker('slk+eng', 1, {
         workerPath: abs('vendor/tesseract/worker.min.js'), corePath: abs('vendor/tesseract/core/'),
         langPath: abs('vendor/tesseract/lang'), cacheMethod: 'none', gzip: true
@@ -735,7 +1127,7 @@ canvas#view.pick { cursor: crosshair; }
   async function runOCR() {
     if (!S.bm || !S.res) return;
     const run = ++S.ocrRun, bm = S.bm, W = S.W, H = S.H, w = W - 2, h = H - 2;
-    const say = t => { if (run === S.ocrRun) $('ocrMsg').textContent = t; };
+    const say = (t, ...a) => { if (run === S.ocrRun) status($('ocrMsg'), t, ...a); };
     const prog = $('ocrProg'), bar = prog.firstElementChild;
     $('ocrBtn').disabled = true;
     try {
@@ -775,30 +1167,30 @@ canvas#view.pick { cursor: crosshair; }
           }
           done++;
           bar.style.width = Math.round(100 * done / tiles.length) + '%';
-          say('Rozpoznávam text: ' + done + ' / ' + tiles.length + ' častí výkresu');
+          say('Rozpoznávam text: {0} / {1} častí výkresu', done, tiles.length);
         }
       };
       await Promise.all(workers.map(one));
       if (run !== S.ocrRun) return;
-      S.ocr = { words: cleanWords(words), f };
+      S.ocr = { raw: cleanWords(words), f }; filterWords();
       prog.hidden = true;
       const sc = detectScale(S.ocr.words);
       const nW = S.ocr.words.length;
-      say('Rozpoznaných ' + fmtN(nW) + ' slov' + (sc ? '. Mierka v pečiatke: 1:' + sc : '') + '.');
+      if (sc) say('Rozpoznaných {0} slov. Mierka v pečiatke: 1:{1}.', fmtN(nW), sc); else say('Rozpoznaných {0} slov.', fmtN(nW));
       $('txtBtn').disabled = !nW; $('showText').disabled = !nW;
       if (sc && !S.manualScale) {
-        $('scale').value = sc; S.scaleFrom = 'Mierka 1:' + sc + ' je prevzatá z rohovej pečiatky.';
-        if (S.auto) { S.auto.chips.push(chip('Mierka z pečiatky **1:' + sc + '**')); renderChips(S.auto.chips); }
+        $('scale').value = sc; S.scaleFrom = sc;
+        if (S.auto) { S.auto.chips.push(chip('Mierka z pečiatky **1:{0}**', [sc])); renderChips(S.auto.chips); }
       }
       if (S.tmode === 'replace') await process(); else { stats(); draw(); }
     } catch (e) {
       prog.hidden = true;
-      say('Rozpoznávanie textu zlyhalo: ' + (e && e.message || e));
+      say('Rozpoznávanie textu zlyhalo: {0}', e && e.message || e);
     } finally { if (run === S.ocrRun) $('ocrBtn').disabled = false; }
   }
 
   function cleanWords(list) {
-    const ok = list.filter(w => /[\p{L}\p{N}]/u.test(w.str) && w.conf >= 55 && w.h >= 6 && w.w >= 3 &&
+    const ok = list.filter(w => /[\p{L}\p{N}]/u.test(w.str) && w.conf >= 30 && w.h >= 6 && w.w >= 3 &&
       !(w.rot === 90 && w.str.length < 2 && w.conf < 85) && !(w.str.length === 1 && w.conf < 75));
     ok.sort((a, b) => b.conf * Math.sqrt(b.str.length) - a.conf * Math.sqrt(a.str.length));
     const kept = [];
@@ -867,8 +1259,8 @@ canvas#view.pick { cursor: crosshair; }
   function downloadTXT() {
     const lines = textLines(S.ocr.words);
     let txt = '', lastRot = 0;
-    for (const l of lines) { if (l.rot && !lastRot) txt += '\n--- zvislý text ---\n'; lastRot = l.rot; txt += l.text + '\n'; }
-    save((S.isSample ? 'ukazka' : S.name) + '_text.txt', new Blob(['﻿' + txt], { type: 'text/plain' }), $('txtBtn'));
+    for (const l of lines) { if (l.rot && !lastRot) txt += '\n--- ' + T('zvislý text') + ' ---\n'; lastRot = l.rot; txt += l.text + '\n'; }
+    save(baseName() + '_text.txt', new Blob(['﻿' + txt], { type: 'text/plain' }), $('txtBtn'));
   }
 
   // ---------- symbols ----------
@@ -899,16 +1291,16 @@ canvas#view.pick { cursor: crosshair; }
     pc.width = Math.max(8, Math.round(box.w * sc)); pc.height = Math.max(8, Math.round(box.h * sc));
     g.imageSmoothingEnabled = true; g.fillStyle = '#fff'; g.fillRect(0, 0, pc.width, pc.height);
     g.drawImage(S.src, box.x, box.y, box.w, box.h, 0, 0, pc.width, pc.height);
-    $('symName').value = nameNear(box) || 'Značka ' + (S.syms.length + 1);
+    $('symName').value = nameNear(box) || T('Značka {0}', S.syms.length + 1);
     $('symForm').hidden = false; $('symName').focus(); $('symName').select();
   }
   async function searchSym(sym) {
     sym.busy = true; renderSyms();
     try {
-      const r = await job('sym', S.bm, S.W, S.H, { box: sym.box, opts: { threshold: +$('sim').value / 100, rotate: true } }, t => { $('symMsg').textContent = t; });
+      const r = await job('sym', S.bm, S.W, S.H, { box: sym.box, opts: { threshold: +$('sim').value / 100, rotate: true } }, t => { status($('symMsg'), t); });
       sym.matches = r.matches;
-      $('symMsg').textContent = '„' + sym.name + '“: nájdených ' + r.matches.length + '×.';
-    } catch (e) { $('symMsg').textContent = 'Hľadanie zlyhalo: ' + e.message; }
+      status($('symMsg'), '„{0}“: nájdených {1}×.', sym.name, r.matches.length);
+    } catch (e) { status($('symMsg'), 'Hľadanie zlyhalo: {0}', e.message); }
     sym.busy = false; renderSyms(); draw();
   }
   function renderSyms() {
@@ -918,22 +1310,22 @@ canvas#view.pick { cursor: crosshair; }
       const i = document.createElement('i'); i.style.background = s.color;
       const n = document.createElement('span'); n.textContent = s.name; n.title = s.name;
       const b = document.createElement('b'); b.textContent = s.busy ? '…' : (s.matches ? s.matches.length + '×' : '–');
-      const x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', 'Odstrániť značku ' + s.name);
+      const x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', T('Odstrániť značku {0}', s.name));
       x.onclick = () => { S.syms = S.syms.filter(q => q !== s); renderSyms(); draw(); };
       li.append(i, n, b, x); ul.appendChild(li);
     }
     $('csvBtn').disabled = !S.syms.some(s => s.matches && s.matches.length);
   }
   function downloadCSV() {
-    const rows = [['Značka', 'Počet']];
+    const rows = [[T('Značka'), T('Počet')]];
     for (const s of S.syms) rows.push([s.name, s.matches ? s.matches.length : 0]);
-    rows.push([], ['Značka', 'X [mm]', 'Y [mm]', 'Otočenie [°]', 'Podobnosť [%]']);
+    rows.push([], [T('Značka'), 'X [mm]', 'Y [mm]', T('Otočenie [°]'), T('Podobnosť [%]')]);
     const k = 25.4 / S.dpi * Math.max(1, +$('scale').value || 1);
     for (const s of S.syms) for (const m of s.matches || []) {
       const [x, y] = toVec(m.x + m.w / 2, m.y + m.h / 2);
       rows.push([s.name, fmtD(x * k, 1), fmtD((S.res.h - y) * k, 1), m.rot * 90, Math.round(m.score * 100)]);
     }
-    save((S.isSample ? 'ukazka' : S.name) + '_vykaz_znaciek.csv', new Blob([VecExport.csv(rows)], { type: 'text/csv' }), $('csvBtn'));
+    save(baseName() + T('_vykaz_znaciek') + '.csv', new Blob([VecExport.csv(rows)], { type: 'text/csv' }), $('csvBtn'));
   }
 
   // Blocks for DXF: geometry of the marked symbol, inserted at every match.
@@ -1007,12 +1399,18 @@ canvas#view.pick { cursor: crosshair; }
       ctx.restore();
     }
     if (P && v !== 'scan') {
-      const over = v === 'over', col = over ? css('--trace') || '#C81E8A' : '#000';
-      ctx.fillStyle = col; ctx.strokeStyle = col; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      if (over && S.mode === 'outline') { ctx.lineWidth = 1.2 / S.k; ctx.stroke(P.f); }
-      else { if (over) ctx.globalAlpha = 0.75; ctx.fill(P.f, 'evenodd'); ctx.globalAlpha = 1; }
-      ctx.lineWidth = over ? Math.max(1.3 / S.k, S.res.sw * 0.35) : S.res.sw;
-      ctx.stroke(P.l);
+      const over = v === 'over';
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (const part of P) {
+        if (part.key && S.colorPrefs[part.key] && S.colorPrefs[part.key].off) continue;
+        const col = part.rgb && (part.rgb[0] || part.rgb[1] || part.rgb[2]) ? 'rgb(' + part.rgb.join(',') + ')' : over ? css('--trace') || '#C81E8A' : '#000';
+        ctx.fillStyle = col; ctx.strokeStyle = col;
+        if (over && S.mode === 'outline') { ctx.lineWidth = 1.2 / S.k; ctx.stroke(part.f); }
+        else { if (over) ctx.globalAlpha = 0.75; ctx.fill(part.f, 'evenodd'); ctx.globalAlpha = 1; }
+        const psw = lwPx() || part.sw;
+        ctx.lineWidth = over ? Math.max(1.3 / S.k, psw * 0.35) : psw;
+        ctx.stroke(part.l);
+      }
     }
     // recognized text
     if (S.ocr && $('showText').getAttribute('aria-pressed') === 'true') {
@@ -1107,25 +1505,51 @@ canvas#view.pick { cursor: crosshair; }
     if (inArtifact) {
       const dl = await dlReady;
       if (!dl) { msg('Sťahovanie tu nie je dostupné. Otvor stránku priamo v claude.ai alebo ju spusti na vlastnom webe.'); return size; }
-      try { await dl.save({ filename: name, data: blob }); msg('Uložené: ' + name + (/\.zip$/.test(name) ? '. Rozbaľ .zip a otvor DXF v CAD-e.' : '')); }
+      try { await dl.save({ filename: name, data: blob }); if (/\.zip$/.test(name)) msg('Uložené: {0}. Rozbaľ .zip a otvor DXF v CAD-e.', name); else msg('Uložené: {0}', name); }
       catch (e) {
-        msg(e && e.code === 'declined' ? 'Uloženie zrušené.' : e && e.code === 'rate_limited' ? 'Chvíľu počkaj a skús to znova.'
-          : 'Súbor sa nepodarilo uložiť (' + (e && e.code || 'chyba') + ').');
+        if (e && e.code === 'declined') msg('Uloženie zrušené.');
+        else if (e && e.code === 'rate_limited') msg('Chvíľu počkaj a skús to znova.');
+        else msg('Súbor sa nepodarilo uložiť ({0}).', e && e.code || 'error');
       }
     } else {
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name;
       document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 20000);
-      msg('Stiahnuté: ' + name + ' (' + size + ')');
+      msg('Stiahnuté: {0} ({1})', name, size);
     }
     return size;
   }
   function annotations(fmt) {
-    const ann = { texts: textItems(), textVisible: S.tmode === 'replace' };
+    const ann = { texts: textItems(), textVisible: S.tmode === 'replace', layerNames: LANG === 'en'
+      ? { lines: 'LINES', fills: 'FILLS', outline: 'OUTLINE', text: 'TEXT', textOcr: 'TEXT-OCR', symbols: 'SYMBOLS' }
+      : { lines: 'OSI', fills: 'PLOCHY', outline: 'OBRYS', text: 'TEXT', textOcr: 'TEXT-OCR', symbols: 'ZNACKY' } };
+    if (S.res.colors) nameColorLayers(S.res);
     if (fmt === 'dxf' && $('symBlocks').checked && S.syms.length) Object.assign(ann, symbolBlocks());
+    if (ann.skipLines && S.res.colors && S.res.colors.some(c => (S.colorPrefs[c.key] || {}).off)) { delete ann.skipLines; delete ann.skipFills; }
     return ann;
   }
+  // Copy of the result without switched-off colours and with the chosen output line width.
+  function outputRes() {
+    const r = S.res, lw = lwPx();
+    let out = r;
+    if (r.colors && r.colors.some(c => (S.colorPrefs[c.key] || {}).off)) {
+      const keepC = r.colors.map(c => !(S.colorPrefs[c.key] || {}).off);
+      const pick = (data, off, col, closed) => {
+        const D = [], O = [0], C = [], K = [];
+        for (let i = 0; i + 1 < off.length; i++) {
+          if (!keepC[col[i]]) continue;
+          for (let p = off[i]; p < off[i + 1]; p++) D.push(data[2 * p], data[2 * p + 1]);
+          O.push(D.length / 2); C.push(col[i]); if (closed) K.push(closed[i]);
+        }
+        return { d: new Float32Array(D), o: new Int32Array(O), c: new Uint8Array(C), k: new Uint8Array(K) };
+      };
+      const L = pick(r.linesData, r.linesOff, r.linesColor, r.linesClosed), F = pick(r.fillsData, r.fillsOff, r.fillsColor, null);
+      out = Object.assign({}, r, { linesData: L.d, linesOff: L.o, linesColor: L.c, linesClosed: L.k, fillsData: F.d, fillsOff: F.o, fillsColor: F.c });
+    }
+    if (lw) out = Object.assign({}, out, { sw: lw, colors: out.colors ? out.colors.map(c => Object.assign({}, c, { sw: lw })) : out.colors });
+    return out;
+  }
   async function build(fmt) {
-    const r = S.res, enc = new TextEncoder(), base = (S.isSample ? 'ukazka' : S.name) + (S.mode === 'center' ? '_osi' : '_obrys');
+    const r = outputRes(), enc = new TextEncoder(), base = baseName() + T(S.mode === 'center' ? '_osi' : '_obrys');
     const ann = annotations(fmt);
     if (fmt === 'svg') return { name: base + '.svg', blob: new Blob([VecExport.svg(r, ann)], { type: 'image/svg+xml' }) };
     if (fmt === 'pdf') return { name: base + '.pdf', blob: new Blob([await VecExport.pdf(r, ann)], { type: 'application/pdf' }) };
@@ -1135,11 +1559,11 @@ canvas#view.pick { cursor: crosshair; }
   }
   async function download(fmt, btn) {
     if (!S.res) return;
-    btn.disabled = true; msg('Pripravujem ' + fmt.toUpperCase() + '…'); await tick();
+    btn.disabled = true; msg('Pripravujem {0}…', fmt.toUpperCase()); await tick();
     try {
       const { name, blob } = await build(fmt);
-      btn.querySelector('small').textContent = await save(name, blob, btn);
-    } catch (e) { msg('Export zlyhal: ' + (e && e.message || e)); }
+      const sm = btn.querySelector('small'); sm.textContent = await save(name, blob, btn); sm._sz = true;
+    } catch (e) { msg('Export zlyhal: {0}', e && e.message || e); }
     finally { btn.disabled = false; }
   }
   document.querySelectorAll('[data-fmt]').forEach(b => b.addEventListener('click', () => download(b.dataset.fmt, b)));
@@ -1149,15 +1573,15 @@ canvas#view.pick { cursor: crosshair; }
   const later = () => { clearTimeout(timer); timer = setTimeout(() => process(), 350); };
   function modeUI() {
     const c = S.mode === 'center';
-    $('modeHint').textContent = c ? 'Každá čiara je jedna polyčiara v osi. Vhodné na ďalšiu prácu v CAD-e.'
-      : 'Verná kópia tvaru: každá čiara je uzavretý obrys. Vhodné na tlač a ako podklad.';
+    $('modeHint').textContent = T(c ? 'Každá čiara je jedna polyčiara v osi. Vhodné na ďalšiu prácu v CAD-e.'
+      : 'Verná kópia tvaru: každá čiara je uzavretý obrys. Vhodné na tlač a ako podklad.');
     $('fillsRow').hidden = !c; $('pruneRow').hidden = !c;
     document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === S.mode)));
   }
   function tmodeUI() {
-    $('tmodeHint').textContent = S.tmode === 'replace'
+    $('tmodeHint').textContent = T(S.tmode === 'replace'
       ? 'Písmo z čiar sa nahradí skutočným textom (v DXF upraviteľný). Pozor: chybne prečítané slovo bude chybné aj vo výkrese.'
-      : 'Čiary písma ostanú. Text sa pridá ako vyhľadávateľná vrstva do PDF a do DXF ako vypnutá hladina TEXT-OCR.';
+      : 'Čiary písma ostanú. Text sa pridá ako vyhľadávateľná vrstva do PDF a do DXF ako vypnutá hladina TEXT-OCR.');
     document.querySelectorAll('[data-tmode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tmode === S.tmode)));
   }
   document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => { S.mode = b.dataset.mode; modeUI(); process(); }));
@@ -1172,12 +1596,75 @@ canvas#view.pick { cursor: crosshair; }
   }));
   $('showText').onclick = () => { const b = $('showText'); b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true')); draw(); };
   $('thr').oninput = () => { const v = +$('thr').value; $('thrVal').textContent = v === 0 ? 'auto' : String(v); later(); };
+  $('colorOn').onchange = () => process();
   $('turd').oninput = () => { $('turdVal').textContent = $('turd').value + ' px'; later(); };
   $('eps').oninput = () => { $('epsVal').textContent = fmtD(+$('eps').value, 1) + ' px'; later(); };
   $('keepFills').onchange = () => process(); $('prune').onchange = () => process(); $('straight').onchange = () => process();
   $('flat').onchange = () => { S.bgMap = null; process(); };
-  $('scale').oninput = () => { S.manualScale = true; S.scaleFrom = ''; scaleHint(); };
+  $('scale').oninput = () => { S.manualScale = true; S.scaleFrom = 0; scaleHint(); };
   $('autoBtn').onclick = () => autoSetup();
+  function setupUI() {
+    document.querySelectorAll('[data-setup]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.setup === S.setup)));
+    $('setupHint').textContent = T(S.setup === 'auto'
+      ? 'Po načítaní súboru sa všetko nastaví podľa skenu. Potom môžeš čokoľvek ručne doladiť.'
+      : 'Nastavenia ostanú tak, ako ich nastavíš, aj pre ďalšie súbory a po opätovnom otvorení stránky.');
+  }
+  document.querySelectorAll('[data-setup]').forEach(b => b.addEventListener('click', () => { S.setup = b.dataset.setup; setupUI(); saveSettings(); }));
+  const mmPx = mm => mm / 25.4 * S.dpi;
+  function lwPx() { const v = +$('lw').value; return v ? mmPx(v * 0.05) : 0; }
+  function fineOpts() {
+    const sk = $('skewIn').value.trim().replace(',', '.'), snap = +$('snap').value, spur = +$('spur').value;
+    return { tol: +$('tol').value, snapR: snap === 0 ? undefined : snap === 1 ? 0 : mmPx((snap - 1) * 0.1),
+      spurLen: spur ? mmPx(spur * 0.1) : undefined, forceSkew: sk !== '' && isFinite(+sk) ? +sk : null };
+  }
+  function fineLabels() {
+    $('tolVal').textContent = fmtD(+$('tol').value, 1) + '°';
+    const snap = +$('snap').value; $('snapVal').textContent = snap === 0 ? 'auto' : snap === 1 ? T('vypnuté') : fmtD((snap - 1) * 0.1, 1) + ' mm';
+    const spur = +$('spur').value; $('spurVal').textContent = spur ? fmtD(spur * 0.1, 1) + ' mm' : 'auto';
+    const lw = +$('lw').value; $('lwVal').textContent = lw ? fmtD(lw * 0.05, 2) + ' mm' : T('podľa skenu');
+    $('chromaVal').textContent = $('chroma').value; $('confVal').textContent = $('conf').value + ' %';
+  }
+  function filterWords() {
+    if (!S.ocr) return;
+    const thr = +$('conf').value;
+    S.ocr.words = S.ocr.raw.filter(w => w.conf >= thr);
+  }
+  for (const id of ['tol', 'snap', 'spur']) $(id).addEventListener('input', () => { fineLabels(); later(); });
+  $('skewIn').addEventListener('change', () => process());
+  $('lw').addEventListener('input', () => { fineLabels(); draw(); });
+  $('chroma').addEventListener('input', () => { fineLabels(); CHROMA = +$('chroma').value; if ($('colorOn').checked) later(); });
+  $('conf').addEventListener('input', () => {
+    fineLabels(); filterWords();
+    if (S.ocr) { status($('ocrMsg'), 'Rozpoznaných {0} slov.', fmtN(S.ocr.words.length)); if (S.tmode === 'replace') later(); else { stats(); draw(); } }
+  });
+  $('resetFine').onclick = () => {
+    $('skewIn').value = ''; $('tol').value = 2; $('snap').value = 0; $('spur').value = 0; $('lw').value = 0; $('chroma').value = 55; $('conf').value = 65;
+    CHROMA = 55; fineLabels(); filterWords(); saveSettings(); process();
+  };
+  const KEEP = ['mode', 'tmode'], CHK = ['straight', 'keepFills', 'prune', 'flat', 'colorOn', 'ocrAuto', 'ocrVert', 'symBlocks'],
+    VAL = ['thr', 'turd', 'eps', 'sim', 'tol', 'snap', 'spur', 'lw', 'chroma', 'conf'];
+  function saveSettings() {
+    const o = { setup: S.setup };
+    for (const k of KEEP) o[k] = S[k];
+    for (const id of CHK) o[id] = $(id).checked;
+    for (const id of VAL) o[id] = $(id).value;
+    try { localStorage.setItem('vz-settings', JSON.stringify(o)); } catch (e) { /* not stored */ }
+  }
+  function loadSettings() {
+    let o = null;
+    try { o = JSON.parse(localStorage.getItem('vz-settings') || 'null'); } catch (e) { o = null; }
+    if (!o) return;
+    S.setup = o.setup === 'manual' ? 'manual' : 'auto';
+    if (S.setup !== 'manual') return;
+    for (const k of KEEP) if (o[k]) S[k] = o[k];
+    for (const id of CHK) if (typeof o[id] === 'boolean') $(id).checked = o[id];
+    for (const id of VAL) if (o[id] != null) $(id).value = o[id];
+    CHROMA = +$('chroma').value;
+    $('turdVal').textContent = $('turd').value + ' px'; $('epsVal').textContent = fmtD(+$('eps').value, 1) + ' px';
+    $('simVal').textContent = $('sim').value + ' %'; $('thrVal').textContent = +$('thr').value === 0 ? 'auto' : $('thr').value;
+  }
+  document.querySelector('aside').addEventListener('change', () => saveSettings());
+  document.querySelectorAll('[data-mode],[data-tmode]').forEach(b => b.addEventListener('click', () => saveSettings()));
   $('ocrBtn').onclick = () => runOCR();
   $('txtBtn').onclick = downloadTXT;
   $('csvBtn').onclick = downloadCSV;
@@ -1185,7 +1672,7 @@ canvas#view.pick { cursor: crosshair; }
   $('symCancel').onclick = () => { $('symForm').hidden = true; S.pendingBox = null; draw(); };
   $('symFind').onclick = () => {
     const box = S.pendingBox; if (!box) return;
-    const sym = { box, name: $('symName').value.trim() || 'Značka ' + (S.syms.length + 1), color: COLORS[S.syms.length % COLORS.length], matches: null };
+    const sym = { box, name: $('symName').value.trim() || T('Značka {0}', S.syms.length + 1), color: COLORS[S.syms.length % COLORS.length], matches: null };
     S.syms.push(sym); S.pendingBox = null; $('symForm').hidden = true;
     renderSyms(); searchSym(sym);
   };
@@ -1197,16 +1684,57 @@ canvas#view.pick { cursor: crosshair; }
     simTimer = setTimeout(async () => { for (const s of S.syms) await searchSym(s); }, 400);
   };
   $('dpi').onchange = () => {
-    if (S.pdf) renderPdfPage(+$('page').value || 1).catch(e => { idle(); msg('Stranu sa nepodarilo načítať: ' + e.message); });
+    if (S.pdf) renderPdfPage(+$('page').value || 1).catch(e => { idle(); msg('Stranu sa nepodarilo načítať: {0}', e.message); });
     else if (!S.isSample && S.src) { S.dpi = $('dpi').value === 'auto' ? 300 : +$('dpi').value; process(); }
   };
-  $('page').onchange = () => renderPdfPage(+$('page').value).catch(e => { idle(); msg('Stranu sa nepodarilo načítať: ' + e.message); });
+  $('page').onchange = () => renderPdfPage(+$('page').value).catch(e => { idle(); msg('Stranu sa nepodarilo načítať: {0}', e.message); });
   $('pick').onclick = () => $('file').click();
   $('file').onchange = e => { openFile(e.target.files[0]); e.target.value = ''; };
   const drop = $('drop');
   ['dragenter', 'dragover'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
   ['dragleave', 'drop'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
   document.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) openFile(f); });
+
+  // ---------- language ----------
+  const norm = t => t.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+  const statics = [], attrs = [];
+  (function collect() {
+    const w = document.createTreeWalker(document.querySelector('.app'), NodeFilter.SHOW_TEXT);
+    let n;
+    while ((n = w.nextNode())) { const k = norm(n.nodeValue); if (EN[k] != null) statics.push({ n, k, orig: n.nodeValue }); }
+    document.querySelectorAll('[aria-label],[title]').forEach(el => {
+      for (const a of ['aria-label', 'title']) { const v = el.getAttribute(a); if (v && EN[v] != null) attrs.push({ el, a, k: v }); }
+    });
+  })();
+  function setLang(l, save) {
+    LANG = l === 'en' ? 'en' : 'sk';
+    for (const s of statics) {
+      const lead = s.orig.match(/^\s*/)[0], trail = s.orig.match(/\s*$/)[0];
+      s.n.nodeValue = LANG === 'en' ? lead + EN[s.k] + trail : s.orig;
+    }
+    for (const a of attrs) a.el.setAttribute(a.a, LANG === 'en' ? EN[a.k] : a.k);
+    document.documentElement.lang = LANG;
+    document.title = T('Vektorizér výkresov');
+    document.querySelectorAll('[data-lang]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.lang === LANG)));
+    if (save) {
+      try { localStorage.setItem('vz-lang', LANG); } catch (e) { /* not stored */ }
+      try { history.replaceState(null, '', '#' + LANG); } catch (e) { /* hash stays */ }
+    }
+    modeUI(); tmodeUI(); setupUI(); fineLabels();
+    for (const id of ['msg', 'ocrMsg', 'symMsg', 'dpiNote']) { const el = $(id); if (el._msg) el.textContent = T(el._msg[0], ...el._msg[1]); }
+    ['szPdf', 'szSvg', 'szDxf'].forEach(id => { const el = $(id); if (!el._sz && el.textContent !== '–' && el.textContent !== '.zip') el.textContent = T('stiahnuť'); });
+    if (S.auto) renderChips(S.auto.chips);
+    if (S.res) { stats(); renderColors(); }
+    renderSyms(); draw();
+  }
+  document.querySelectorAll('[data-lang]').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang, true)));
+  let initLang = (location.hash.match(/^#(sk|en)$/) || [])[1];
+  if (!initLang) { try { initLang = localStorage.getItem('vz-lang'); } catch (e) { initLang = null; } }
+  if (!initLang) initLang = /^(sk|cs)\b/i.test(navigator.language || '') ? 'sk' : 'en';
+  S.setup = 'auto'; S.colorPrefs = {};
+  loadSettings();
+  setLang(initLang, false);
+  window.addEventListener('hashchange', () => { const m = location.hash.match(/^#(sk|en)$/); if (m && m[1] !== LANG) setLang(m[1], false); });
 
   modeUI(); tmodeUI();
   S.fresh = false;

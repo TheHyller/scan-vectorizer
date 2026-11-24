@@ -775,7 +775,7 @@ function VecCore() {
   }
 
   // A piece that is an axis-aligned line plus scan noise is re-simplified coarsely.
-  function relaxAxis(pl, eps) {
+  function relaxAxis(pl, eps, tolDeg) {
     const n = pl.xs.length;
     if (n < 3) return;
     need(n + 2);
@@ -787,7 +787,7 @@ function VecCore() {
     const xs = [], ys = [];
     for (let i = 0; i < m; i++) if (KEEP[i]) { xs.push(XS[i]); ys.push(YS[i]); }
     if (pl.closed) { xs.pop(); ys.pop(); if (xs.length < 3) return; }
-    const t = Math.tan(2 * Math.PI / 180), segs = pl.closed ? xs.length : xs.length - 1;
+    const t = Math.tan((tolDeg || 2) * Math.PI / 180), segs = pl.closed ? xs.length : xs.length - 1;
     for (let i = 0; i < segs; i++) {
       const j = (i + 1) % xs.length, dx = Math.abs(xs[j] - xs[i]), dy = Math.abs(ys[j] - ys[i]);
       if (!(dy <= t * dx || dx <= t * dy)) return;
@@ -844,18 +844,22 @@ function VecCore() {
   function straighten(lines, fills, o) {
     const L = unpack(lines), F = unpack(fills);
     let skew = 0;
-    if (o.deskew) {
+    if (typeof o.forceSkew === 'number') {
+      skew = o.forceSkew;
+      if (skew) rotateAll([L, F], skew, o.cx, o.cy);
+    } else if (o.deskew) {
       skew = estimateSkew([L, F], Math.max(120, 40 * o.sw));
       if (skew) rotateAll([L, F], skew, o.cx, o.cy);
     }
     let snapped = 0;
     if (o.ortho) {
       const relax = 0.5 * o.sw + 0.4;
-      for (const pl of L) { relaxAxis(pl, relax); orthoSnap(pl, 2); }
+      const tol = o.tol || 2;
+      for (const pl of L) { relaxAxis(pl, relax, tol); orthoSnap(pl, tol); }
       alignAxes(L, 0.9 * o.sw + 0.5, 2 * o.sw + 4);
       for (const pl of L) sharpen(pl, Math.max(1.6, 0.7 * o.sw));
-      for (const pl of F) { orthoSnap(pl, 2); sharpen(pl, Math.max(1.6, 0.7 * o.sw)); orthoSnap(pl, 2); }
-      snapped = snapEnds(L, 1.3 * o.sw + 2, F, Math.ceil(o.sw * 0.9) + 1);
+      for (const pl of F) { orthoSnap(pl, tol); sharpen(pl, Math.max(1.6, 0.7 * o.sw)); orthoSnap(pl, tol); }
+      snapped = o.snapR === 0 ? 0 : snapEnds(L, o.snapR > 0 ? o.snapR : 1.3 * o.sw + 2, F, Math.ceil(o.sw * 0.9) + 1);
       for (const pl of L) orthoSnap(pl, 0.5);
     }
     const ls = new Store(), fs = new Store();
@@ -1053,14 +1057,14 @@ function VecCore() {
       say('Stenčujem čiary na osi…');
       const sk = thin(bm, W, H);
       say('Skladám čiary…');
-      const g = skeletonGraph(bm, W, sk.list, sk.n, opts.prune ? Math.max(3, Math.round(sw * 1.6)) : 0);
+      const g = skeletonGraph(bm, W, sk.list, sk.n, !opts.prune ? 0 : opts.spurLen > 0 ? Math.round(opts.spurLen) : Math.max(3, Math.round(sw * 1.6)));
       length = polysToStore(g.polys, g.dots, W, opts.eps * 1.05, lines, bm, opts.ortho ? Math.ceil(sw * 0.9) + 1 : 0);
       if (length > 0) drawW = Math.max(1, Math.min(sw, sk.ink / length));
     }
     let f = fills.pack(), l = lines.pack(), skew = 0, snapped = 0;
     if (opts.deskew || opts.ortho) {
       say('Rovnám čiary…');
-      const st = straighten(l, f, { deskew: opts.deskew, ortho: opts.ortho, sw, cx: (W - 2) / 2, cy: (H - 2) / 2 });
+      const st = straighten(l, f, { deskew: opts.deskew, ortho: opts.ortho, sw, cx: (W - 2) / 2, cy: (H - 2) / 2, forceSkew: opts.forceSkew, tol: opts.orthoTol, snapR: opts.snapR });
       l = st.lines; f = st.fills; skew = st.skew; snapped = st.snapped;
     }
     return {
